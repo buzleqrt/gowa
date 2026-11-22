@@ -15,11 +15,9 @@ const USER_AGENT = 'com.larus.wolf/15090030 (Linux; U; Android 14; en_US; Pixel 
 const API_BASE = 'https://api-normal-i18n.dola.com';
 const DEVICE_REGISTER_URL = 'https://ichannel-i18n.ciciai.com/service/2/device_register/';
 const DEFAULT_BOT_ID = '7241547611541340167';
-// DOLA_SESSION_PATH menyimpan device/bot (boleh dipakai bersama).
 const SESSION_PATH = process.env.DOLA_SESSION_PATH
   ? path.resolve(process.env.DOLA_SESSION_PATH)
   : path.join(__dirname, 'dola_session.json');
-// DOLA_CONV_PATH menyimpan konteks percakapan per chat, terpisah dari device.
 const CONV_PATH = process.env.DOLA_CONV_PATH ? path.resolve(process.env.DOLA_CONV_PATH) : null;
 const REQUEST_TIMEOUT = 180000;
 const LIMIT_CODES = new Set([710022021, 710022020, 710022013, 710012001]);
