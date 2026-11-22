@@ -21,7 +21,6 @@ import (
 )
 
 func EnhanceImage(ctx context.Context, source string) ([]byte, error) {
-	// Siapkan bytes & file input lokal.
 	var data []byte
 	inputPath := source
 	cleanupInput := false
@@ -66,13 +65,11 @@ func EnhanceImage(ctx context.Context, source string) ([]byte, error) {
 		defer os.Remove(inputPath)
 	}
 
-	// Coba IHancer (gratis) terlebih dahulu.
 	ext := detectImageExt(data)
 	if enhanced, err := ihancerEnhance(ctx, data, "image"+ext); err == nil && len(enhanced) > 0 {
 		return enhanced, nil
 	}
 
-	// Coba scraper eksternal (imageupscaler.com).
 	outFile, err := os.CreateTemp("", "hd-out-*")
 	if err != nil {
 		return nil, err
@@ -91,10 +88,8 @@ func EnhanceImage(ctx context.Context, source string) ([]byte, error) {
 				return out, nil
 			}
 		}
-		// fallback ke lokal jika scraper gagal
 	}
 
-	// Fallback lokal: upscale 2x + enhance.
 	if len(data) == 0 {
 		b, err := os.ReadFile(inputPath)
 		if err != nil {
