@@ -26,43 +26,18 @@ type errorResult struct {
 var progressPrefixes = []string{"Registering", "Core warning", "Limit ("}
 
 func nodeBinary() string {
-	candidates := []string{
-		"node",
-		"/root/.nvm/versions/node/v26.13.0/bin/node",
-		"/usr/bin/node",
-		"/usr/local/bin/node",
-	}
-	for _, c := range candidates {
-		if c == "node" {
-			if p, err := exec.LookPath(c); err == nil {
-				return p
-			}
-			continue
-		}
-		if _, err := os.Stat(c); err == nil {
-			return c
-		}
+	if p, err := exec.LookPath("node"); err == nil {
+		return p
 	}
 	return "node"
 }
 
 func scriptPath() string {
-	candidates := []string{
-		"/root/Gowa/scripts/dola.js",
-		"scripts/dola.js",
+	wd, err := os.Getwd()
+	if err != nil {
+		return filepath.Join("scripts", "dola.js")
 	}
-	for _, c := range candidates {
-		if _, err := os.Stat(c); err == nil {
-			if filepath.IsAbs(c) {
-				return c
-			}
-			if wd, err := os.Getwd(); err == nil {
-				return filepath.Join(wd, c)
-			}
-			return c
-		}
-	}
-	return "/root/Gowa/scripts/dola.js"
+	return filepath.Join(wd, "scripts", "dola.js")
 }
 
 // proxyList membaca DOLA_PROXY yang boleh berisi beberapa proxy dipisah koma.
@@ -90,6 +65,9 @@ func isTransportError(msg string) bool {
 
 func run(ctx context.Context, proxy, sessionPath, convPath, stdin string, args ...string) (string, error) {
 	script := scriptPath()
+	if _, err := os.Stat(script); err != nil {
+		return "", fmt.Errorf("skrip dola tidak ditemukan di %s", script)
+	}
 	cmd := exec.CommandContext(ctx, nodeBinary(), append([]string{script}, args...)...)
 	cmd.Dir = filepath.Dir(script)
 	cmd.Env = append(os.Environ(), "DOLA_SESSION_PATH="+sessionPath)
