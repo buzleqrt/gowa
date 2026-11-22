@@ -12,7 +12,6 @@ import (
 	"github.com/traefik/yaegi/interp"
 	"github.com/traefik/yaegi/stdlib"
 
-	"gowa/internal/aimusic"
 	"gowa/internal/cfc"
 	"gowa/internal/command"
 	"gowa/internal/dola"
@@ -103,11 +102,6 @@ var Exports = interp.Exports{
 		"FormatSearch":  reflect.ValueOf(pinterest.FormatSearch),
 		"ExtractPinID":  reflect.ValueOf(pinterest.ExtractPinID),
 		"MIME":          reflect.ValueOf(pinterest.MIME),
-	},
-	"gowa/internal/aimusic/aimusic": {
-		"Song":     reflect.ValueOf((*aimusic.Song)(nil)),
-		"Generate": reflect.ValueOf(aimusic.Generate),
-		"Download": reflect.ValueOf(aimusic.Download),
 	},
 	"gowa/internal/hd/hd": {
 		"UploadToCDN":  reflect.ValueOf(hd.UploadToCDN),
