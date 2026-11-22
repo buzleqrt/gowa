@@ -56,7 +56,6 @@ func handleTTS(ctx *command.Context) error {
 	return ctx.SendVoiceNote(audio, "audio/ogg; codecs=opus", seconds)
 }
 
-// quotedText mengambil teks dari pesan yang di-reply, bila ada.
 func quotedText(ctx *command.Context) string {
 	quoted := ctx.GetQuotedMessage()
 	if quoted == nil {

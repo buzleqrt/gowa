@@ -11,9 +11,6 @@ import (
 	"strings"
 )
 
-// fetchMobilePlayURL mengambil URL stream video tanpa watermark dari API
-// mobile TikTok. Endpoint ini tidak selalu tersedia (membalas HTTP 429 dari
-// sebagian IP), jadi hasil kosong berarti pemanggil perlu memakai cadangan.
 func fetchMobilePlayURL(ctx context.Context, id string) string {
 	query := url.Values{}
 	query.Set("aweme_id", id)
@@ -50,9 +47,6 @@ func fetchMobilePlayURL(ctx context.Context, id string) string {
 	return ""
 }
 
-// fetchEmbed mengambil metadata dari halaman embed resmi TikTok. Halaman ini
-// memuat state JSON lengkap dan tidak menerapkan tanda tangan X-Argus seperti
-// API mobile, sehingga bisa dipakai tanpa kredensial.
 func fetchEmbed(ctx context.Context, id string) (*Metadata, error) {
 	body, status, err := getBody(ctx, "https://www.tiktok.com/embed/"+id, browserUA, "https://www.tiktok.com/")
 	if err != nil {

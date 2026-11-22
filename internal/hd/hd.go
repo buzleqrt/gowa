@@ -179,8 +179,6 @@ func localEnhance(data []byte) ([]byte, error) {
 		return nil, fmt.Errorf("dimensi gambar tidak valid")
 	}
 
-	// Skala adaptif: gambar kecil di-upscale 4x, gambar besar 2x,
-	// dengan batas maksimum 4096 px agar tidak kehabisan memori.
 	scale := 4
 	if w >= 1024 || h >= 1024 {
 		scale = 2

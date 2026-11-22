@@ -12,7 +12,6 @@ import (
 	"time"
 )
 
-// ErrUserNotFound dikembalikan bila akun TikTok tidak ada atau sudah dihapus.
 var ErrUserNotFound = errors.New("akun TikTok tidak ditemukan")
 
 var (
@@ -20,7 +19,6 @@ var (
 	universalPattern = regexp.MustCompile(`(?s)<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application/json">(.*?)</script>`)
 )
 
-// Profile berisi informasi publik sebuah akun TikTok.
 type Profile struct {
 	ID        string `json:"id"`
 	Username  string `json:"username"`
@@ -36,11 +34,10 @@ type Profile struct {
 	Likes     int64  `json:"likes"`
 	Videos    int64  `json:"videos"`
 	Friends   int64  `json:"friends"`
-	CreatedAt int64  `json:"created_at"` // unix detik
+	CreatedAt int64  `json:"created_at"`
 	Profile   string `json:"profile"`
 }
 
-// ExtractUsername mengambil nama pengguna dari URL profil, "@nama", atau nama polos.
 func ExtractUsername(raw string) string {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -63,8 +60,6 @@ func ExtractUsername(raw string) string {
 	return raw
 }
 
-// FetchProfile mengambil informasi publik sebuah akun TikTok dari halaman profil.
-// Trailing slash dan parameter lang diperlukan agar halaman tidak ditolak WAF.
 func FetchProfile(ctx context.Context, raw string) (*Profile, error) {
 	username := ExtractUsername(raw)
 	if username == "" {
@@ -116,7 +111,6 @@ func FetchProfile(ctx context.Context, raw string) (*Profile, error) {
 	return profile, nil
 }
 
-// FormatProfile merangkum profil menjadi teks siap kirim.
 func FormatProfile(p *Profile) string {
 	if p == nil {
 		return ""

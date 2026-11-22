@@ -15,8 +15,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// Preview adalah isi pesan link-preview: URL tujuan, judul, deskripsi, dan
-// teks tambahan yang ikut dikirim di bawah URL.
 type Preview struct {
 	URL   string
 	Title string
@@ -25,8 +23,6 @@ type Preview struct {
 	Quote *waProto.ContextInfo
 }
 
-// BuildMessage menyusun pesan ExtendedTextMessage dengan preview tautan yang
-// memakai metadata thumbnail dan (opsional) favicon.
 func BuildMessage(p Preview, meta, favicon *Meta) *waProto.Message {
 	if meta == nil {
 		return nil
@@ -74,8 +70,6 @@ func BuildMessage(p Preview, meta, favicon *Meta) *waProto.Message {
 	return &waProto.Message{ExtendedTextMessage: ext}
 }
 
-// Resolve mengambil metadata berdasarkan nama di database, kata kunci
-// "random", atau URL gambar yang diunggah saat itu juga.
 func Resolve(ctx context.Context, cli *whatsmeow.Client, store *storage.ThumbStore, value, kind string) (*Meta, error) {
 	if store == nil {
 		return nil, errors.New("database thumbnail tidak tersedia")

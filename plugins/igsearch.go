@@ -18,8 +18,7 @@ const (
 	igSearchDownloadTimeout = 5 * time.Minute
 	igSearchMaxMediaBytes   = 64 << 20
 	igSearchCaptionLimit    = 700
-	// Jumlah post hasil .igsearch: tanpa angka hanya 1, angka di akhir perintah
-	// menentukan jumlahnya sampai batas maksimum.
+
 	igSearchDefaultPosts = 1
 	igSearchMaxPosts     = 10
 )
@@ -50,10 +49,6 @@ func handleIGSearch(ctx *command.Context) error {
 	reqCtx, cancel := context.WithTimeout(baseCtx, igSearchTimeout)
 	defer cancel()
 
-	// Prioritaskan pencarian berbasis akun. Jika query berbentuk username,
-	// ambil langsung postingannya; jika query berupa nama bebas (misalnya
-	// "davina karamoy"), coba resolusi ke username terlebih dahulu. Bila akun
-	// tidak ditemukan, baru jatuh ke pencarian hashtag lama.
 	account := ""
 	var result *instagram.SearchResult
 	var err error
@@ -120,8 +115,6 @@ func handleIGSearch(ctx *command.Context) error {
 	media := make([]searchMedia, 0, len(result.Posts))
 	images, videos := 0, 0
 
-	// Satu post bisa berisi carousel; ambil media pertamanya saja supaya
-	// jumlah yang dikirim sesuai angka yang diminta.
 	for _, post := range result.Posts {
 		if len(post.Items) == 0 {
 			continue
@@ -154,8 +147,6 @@ func handleIGSearch(ctx *command.Context) error {
 		return ctx.ReplyImage(only.data, only.mime, igSearchCaption(only.post))
 	}
 
-	// Lebih dari satu media dikirim sebagai satu album, termasuk video, supaya
-	// hasil pencarian tidak berhamburan jadi banyak pesan terpisah.
 	items := make([]command.AlbumItem, len(media))
 	for i, entry := range media {
 		items[i] = command.AlbumItem{Data: entry.data, Video: entry.video}
@@ -184,8 +175,6 @@ func igSearchAlbumCaption(tag string, images, videos int) string {
 	return fmt.Sprintf("*INSTAGRAM - #%s* • %s", tag, strings.Join(parts, " • "))
 }
 
-// parseIGSearchArgs memisahkan jumlah post di akhir perintah, misalnya
-// ".igsearch anime 3" menjadi kata kunci "anime" dengan jumlah 3.
 func parseIGSearchArgs(args []string) (string, int) {
 	count := igSearchDefaultPosts
 	if len(args) > 1 {
@@ -235,8 +224,6 @@ func igSearchCaption(post *instagram.Metadata) string {
 	return sb.String()
 }
 
-// igSearchFallback dipakai bila semua media gagal diunduh: kirim daftar link
-// post supaya hasil pencarian tetap bisa dibuka.
 func igSearchFallback(result *instagram.SearchResult) string {
 	var sb strings.Builder
 	label := result.Tag

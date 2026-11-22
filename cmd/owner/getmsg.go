@@ -19,7 +19,6 @@ import (
 )
 
 const (
-	// Batas atas jumlah pesan per file, supaya tidak menulis berkas raksasa.
 	maxDumpMessages = 500
 	maxDumpBytes    = 40 << 20
 )
@@ -130,7 +129,6 @@ type dumpResult struct {
 	Target   string
 }
 
-// buildDump menyusun isi file `.js` dari arsip pesan.
 func buildDump(ctx *command.Context, store *storage.MessageStore, chat string, limit int) (*dumpResult, error) {
 	target := extractTarget(ctx, ctx.Args[1:])
 	scan := limit * 3
@@ -156,8 +154,7 @@ func buildDump(ctx *command.Context, store *storage.MessageStore, chat string, l
 		}
 		targetLabel = plainNumber(target.String())
 	} else {
-		// Hanya baris percakapan yang dihitung, sehingga jendela pemindaian
-		// tidak habis oleh pesan sistem atau perintah bot sendiri.
+
 		rows, err := store.LatestConversation(chat, scan)
 		if err != nil {
 			return nil, fmt.Errorf("❌ Gagal membaca store pesan: %v", err)
@@ -169,9 +166,6 @@ func buildDump(ctx *command.Context, store *storage.MessageStore, chat string, l
 			return nil, fmt.Errorf("❌ Tidak ada pesan tersimpan di %s", chat)
 		}
 
-		// Mode tanpa target: pengirim pesan terbaru jadi acuan, lalu pesan
-		// pengirim itu diambil sampai jumlah yang diminta walaupun jendela
-		// pemindaian lebih sempit.
 		newest := rows[0]
 		resolved := senderKey(&newest)
 		if resolved == "" {
@@ -222,8 +216,6 @@ func buildDump(ctx *command.Context, store *storage.MessageStore, chat string, l
 	return &dumpResult{Body: body, FileName: fileName, Total: len(entries), Target: targetLabel}, nil
 }
 
-// extractTarget mengambil satu target dari reply, mention, atau nomor yang
-// diketik — berurutan seperti itu.
 func extractTarget(ctx *command.Context, args []string) types.JID {
 	if ci := ctx.GetContextInfo(); ci != nil {
 		quoted := ci.GetParticipant()
@@ -271,9 +263,6 @@ func parseUserJID(value string) (types.JID, bool) {
 	return jid, true
 }
 
-// senderCandidates mencoba bentuk JID yang diminta lalu pasangannya (LID ↔
-// nomor), karena reply/tag sering memberi LID sementara arsip bisa menyimpan
-// salah satunya.
 func senderCandidates(ctx *command.Context, target types.JID) []string {
 	target = target.ToNonAD()
 	list := []string{target.String()}
@@ -377,9 +366,6 @@ func quotedContent(msg *waProto.Message) (kind, text string) {
 	return "", ""
 }
 
-// resolveSenderLID mengembalikan LID pengirim. Arsip bisa menyimpan nomor saja,
-// jadi pasangannya dicari lewat pemetaan LID bot; kalau tetap tidak ada, LID
-// yang tersembunyi di payload pesan dipakai sebagai cadangan.
 func resolveSenderLID(ctx *command.Context, m storage.Message, rawJSON []byte) *string {
 	for _, candidate := range []string{m.Sender, m.SenderPN} {
 		jid, err := types.ParseJID(candidate)
@@ -413,9 +399,6 @@ func resolveSenderLID(ctx *command.Context, m storage.Message, rawJSON []byte) *
 	return nil
 }
 
-// filterDumpable membuang pesan sistem (protokol, kunci grup, riwayat) yang
-// bukan percakapan. Kolom msg_type diperiksa dulu, lalu isi payload-nya, karena
-// baris lama bisa tercatat dengan tipe lain padahal isinya kunci grup.
 func filterDumpable(rows []storage.Message) []storage.Message {
 	out := make([]storage.Message, 0, len(rows))
 	for _, row := range rows {
@@ -463,8 +446,6 @@ func excludeMessages(rows []storage.Message, excluded map[string]bool) []storage
 	return out
 }
 
-// botIdentities adalah JID akun bot sendiri dan pasangannya, supaya balasan
-// bot tidak ikut ter-dump.
 func botIdentities(ctx *command.Context) map[string]bool {
 	out := map[string]bool{}
 	if ctx.Client == nil || ctx.Client.Store == nil {
@@ -490,8 +471,6 @@ func normalizeJID(jid string) string {
 	return strings.Split(strings.TrimSpace(jid), ":")[0]
 }
 
-// plainNumber mengambil digit nomor dari sebuah JID; sufiks device dibuang
-// dulu supaya `628123:5@s.whatsapp.net` tidak jadi `6281235`.
 func plainNumber(jid string) string {
 	withoutDevice := strings.Split(jid, ":")[0]
 	var digits strings.Builder

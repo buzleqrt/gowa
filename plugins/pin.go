@@ -17,8 +17,7 @@ const (
 	pinDownloadTimeout = 5 * time.Minute
 	pinMaxMediaBytes   = 64 << 20
 	pinCaptionLimit    = 900
-	// Jumlah gambar hasil .pins: tanpa angka hanya 1, angka di akhir perintah
-	// menentukan jumlahnya sampai batas maksimum.
+
 	pinSearchDefaultImages = 1
 	pinSearchMaxImages     = 10
 )
@@ -145,8 +144,6 @@ func handlePinSearch(ctx *command.Context) error {
 		return ctx.Reply(fmt.Sprintf("*Tidak ditemukan:*\ntidak ada pin publik yang cocok dengan _%s_", query))
 	}
 
-	// Kirim hasil sebagai gambar langsung supaya tidak perlu buka link satu
-	// per satu. Kalau semua unduhan gagal, baru tampilkan daftar teks.
 	dlCtx, dlCancel := context.WithTimeout(baseCtx, pinDownloadTimeout)
 	defer dlCancel()
 
@@ -175,8 +172,6 @@ func handlePinSearch(ctx *command.Context) error {
 		return ctx.Reply(pinterest.FormatSearch(result))
 	}
 
-	// Satu gambar tetap dikirim sebagai balasan biasa; lebih dari satu
-	// dikirim sebagai album supaya tidak membanjiri chat.
 	if len(media) == 1 {
 		return ctx.ReplyImage(media[0].data, media[0].mime, buildPinSearchCaption(media[0].pin, 1, 1))
 	}
@@ -186,15 +181,10 @@ func handlePinSearch(ctx *command.Context) error {
 		images[i] = item.data
 	}
 
-	// Caption album hanya satu baris: baris baru dan daftar bernomor tidak
-	// tampil rapi pada tampilan album WhatsApp.
 	caption := fmt.Sprintf("*PINTEREST - %s* • %d gambar", truncatePinText(query, 80), len(images))
 	return ctx.ReplyAlbum(images, caption)
 }
 
-// parsePinSearchArgs memisahkan jumlah gambar di akhir perintah, misalnya
-// ".pins cat 2" menjadi kata kunci "cat" dengan jumlah 2. Tanpa angka,
-// jumlahnya 1 supaya perintah tidak membanjiri chat.
 func parsePinSearchArgs(args []string) (string, int) {
 	count := pinSearchDefaultImages
 	if len(args) > 1 {
@@ -236,9 +226,6 @@ func buildPinSearchCaption(pin pinterest.Pin, index, total int) string {
 	return sb.String()
 }
 
-// pinSearchTitleFallback dipakai saat pin tidak punya judul maupun deskripsi.
-// ID pin baru Pinterest berbentuk buram (e1_...) sehingga tidak layak
-// ditampilkan.
 func pinSearchTitleFallback(pin pinterest.Pin) string {
 	if pin.Pinner != nil && pin.Pinner.Username != "" {
 		return "Pin oleh @" + pin.Pinner.Username

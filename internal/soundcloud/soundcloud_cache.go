@@ -23,8 +23,6 @@ func readCache(trackID int64, maxBytes int64) ([]byte, bool) {
 	return data, true
 }
 
-// writeCache menulis lewat berkas sementara lalu rename, supaya pembaca lain
-// tidak pernah melihat berkas setengah jadi.
 func writeCache(trackID int64, data []byte) {
 	path := cacheFile(trackID)
 	dir := filepath.Dir(path)

@@ -206,7 +206,6 @@ func relayPinData(candidate string) map[string]json.RawMessage {
 		}
 	}
 
-	// Sebagian payload menyimpan objek pin langsung di level atas.
 	var fields map[string]json.RawMessage
 	if json.Unmarshal([]byte(candidate), &fields) == nil {
 		if _, ok := fields["entityId"]; ok {
@@ -216,8 +215,6 @@ func relayPinData(candidate string) map[string]json.RawMessage {
 	return nil
 }
 
-// directVideoURL menelusuri playlist HLS untuk menemukan berkas video
-// langsung, karena WhatsApp tidak bisa memutar URL .m3u8.
 func directVideoURL(ctx context.Context, raw string) string {
 	if !strings.HasSuffix(raw, ".m3u8") {
 		return raw

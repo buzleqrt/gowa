@@ -5,8 +5,6 @@ import (
 	"strings"
 )
 
-// parseTrack membaca satu musicResponsiveListItemRenderer. Hanya baris yang
-// punya videoId (lagu/video) yang dianggap hasil yang bisa diputar.
 func parseTrack(renderer map[string]any) *Track {
 	videoID := findString(renderer, "watchEndpoint", "videoId")
 	if videoID == "" {
@@ -97,15 +95,13 @@ func columnText(column map[string]any) string {
 	return sb.String()
 }
 
-// parseArtist mengambil nama artis dari subjudul seperti
-// "Song • Weird Genius & Sara Fajira" atau "Song • Artist • Album".
 func parseArtist(subtitle string) string {
 	parts := strings.Split(subtitle, " • ")
 	if len(parts) <= 1 {
 		return strings.TrimSpace(subtitle)
 	}
 	rest := parts[1:]
-	// "Song • Artist" -> Artist; "Song • Artist • Album" -> Artist.
+
 	return strings.TrimSpace(rest[0])
 }
 

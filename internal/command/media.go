@@ -116,8 +116,6 @@ func (c *Context) GetContextInfo() *waProto.ContextInfo {
 	return ContextInfoOf(UnwrapMessage(c.Event.Message))
 }
 
-// ContextInfoOf mengambil ContextInfo (quote, mention, forwarding) dari isi
-// pesan yang sudah di-unwrap.
 func ContextInfoOf(msg *waProto.Message) *waProto.ContextInfo {
 	if msg == nil {
 		return nil
@@ -236,8 +234,6 @@ func (c *Context) SendAudio(data []byte, mimeType string, isPtt bool) error {
 	return c.sendAudio(data, mimeType, isPtt, 0)
 }
 
-// SendVoiceNote mengirim voice note (PTT) lengkap dengan durasi yang
-// ditampilkan di chat.
 func (c *Context) SendVoiceNote(data []byte, mimeType string, seconds uint32) error {
 	return c.sendAudio(data, mimeType, true, seconds)
 }

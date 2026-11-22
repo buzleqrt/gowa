@@ -32,7 +32,7 @@ func handleCFC(ctx *command.Context) error {
 	text := strings.Join(ctx.Args[1:], " ")
 	spec := cfc.Spec{
 		Participant: "0@s.whatsapp.net",
-		Timestamp:   0, // otomatis 1 jam lalu
+		Timestamp:   0,
 		Text:        text,
 		FromMe:      false,
 		PushName:    "Fake",

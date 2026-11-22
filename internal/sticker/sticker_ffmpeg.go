@@ -12,8 +12,6 @@ import (
 	"strings"
 )
 
-// durationSeconds membaca durasi audio lewat ffprobe; 0 bila gagal dibaca.
-// ffprobe butuh seek untuk menghitung durasi ogg, jadi data ditulis ke file sementara.
 func durationSeconds(ctx context.Context, data []byte) uint32 {
 	ffprobe, err := exec.LookPath("ffprobe")
 	if err != nil || len(data) == 0 {
@@ -51,8 +49,6 @@ func durationSeconds(ctx context.Context, data []byte) uint32 {
 	return uint32(math.Round(secs))
 }
 
-// coverWebp mengubah sumber gambar apa pun menjadi webp stiker 512x512.
-// Sumber bergerak (video/gif/webp animasi) menghasilkan webp animasi.
 func coverWebp(ctx context.Context, data []byte, movingHint bool) ([]byte, bool, error) {
 	if len(data) == 0 {
 		return nil, false, ErrImageEmpty
@@ -83,8 +79,6 @@ func coverWebp(ctx context.Context, data []byte, movingHint bool) ([]byte, bool,
 			}
 		}
 
-		// ffmpeg 4.4 belum bisa men-decode webp animasi; frame diurai sendiri
-		// lalu dikirim sebagai rawvideo ke ffmpeg.
 		if isAnimatedWebP(data) {
 			frames, delays, err := decodeAnimatedWebP(data)
 			if err == nil && len(frames) > 0 {
@@ -102,7 +96,7 @@ func coverWebp(ctx context.Context, data []byte, movingHint bool) ([]byte, bool,
 				}
 			}
 		}
-		// Terlalu besar / tidak terbaca: ambil satu frame saja.
+
 	}
 
 	out, stderr, err := renderCover(ctx, ffmpeg, data, false, 0, 80, 0)
@@ -118,7 +112,6 @@ func coverWebp(ctx context.Context, data []byte, movingHint bool) ([]byte, bool,
 	return out, false, nil
 }
 
-// renderCover menjalankan ffmpeg dari stdin ke stdout untuk membuat webp stiker.
 func renderCover(ctx context.Context, ffmpeg string, data []byte, animated bool, fps, quality, seconds int) ([]byte, string, error) {
 	in, cleanup, err := writeTempInput(data)
 	if err != nil {
@@ -165,8 +158,6 @@ func renderCover(ctx context.Context, ffmpeg string, data []byte, animated bool,
 	return out, stderr, err
 }
 
-// writeTempInput menulis media ke file sementara supaya ffmpeg bisa seek.
-// Sebagian demuxer (gif, ogg, mp4) gagal membaca dari pipe.
 func writeTempInput(data []byte) (string, func(), error) {
 	f, err := os.CreateTemp("", "gowa-sticker-*"+sniffExt(data))
 	if err != nil {

@@ -75,8 +75,6 @@ type getResponse struct {
 	body      []byte
 }
 
-// Tujuan ke alamat internal (loopback, private, link-local) ditolak supaya
-// .get tidak bisa dipakai memanggil layanan di dalam server bot.
 func guardTargetURL(targetURL string) error {
 	u, err := url.Parse(targetURL)
 	if err != nil {

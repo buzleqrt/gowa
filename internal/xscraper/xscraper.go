@@ -1,5 +1,3 @@
-// Package xscraper menjalankan CLI x-scraper-node (Node.js) untuk mengunduh
-// media dari post X (Twitter), lalu membaca hasilnya sebagai byte siap kirim.
 package xscraper
 
 import (
@@ -60,8 +58,6 @@ type author struct {
 	Name       string `json:"name"`
 }
 
-// ParseArgs memisahkan link dari kata kunci filter media ("video"/"image")
-// pada argumen perintah.
 func ParseArgs(args []string) (link, mediaType string) {
 	for _, arg := range args {
 		switch strings.ToLower(arg) {
@@ -82,7 +78,6 @@ func ParseArgs(args []string) (link, mediaType string) {
 	return link, mediaType
 }
 
-// ExtractLink mengambil link X/Twitter dari teks bebas.
 func ExtractLink(args []string) string {
 	link, _ := ParseArgs(args)
 	return link
@@ -102,8 +97,6 @@ func looksLikeLink(arg string) bool {
 	return false
 }
 
-// Fetch menjalankan scraper pada folder sementara dan mengembalikan media
-// yang berhasil diunduh beserta metadatanya.
 func Fetch(ctx context.Context, link, mediaType string) (*Result, error) {
 	link = strings.TrimSpace(link)
 	if link == "" {
@@ -176,7 +169,6 @@ func Fetch(ctx context.Context, link, mediaType string) (*Result, error) {
 	return result, nil
 }
 
-// Available melaporkan apakah berkas scraper X bisa ditemukan.
 func Available() bool {
 	_, err := scraperPath()
 	return err == nil
@@ -294,7 +286,6 @@ func imageMime(ext string) string {
 	return "image/jpeg"
 }
 
-// FormatCaption membangun keterangan pesan dari metadata post.
 func FormatCaption(meta *Metadata) string {
 	if meta == nil {
 		return "*X (Twitter)*"

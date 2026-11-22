@@ -136,9 +136,6 @@ func addThumbFlow(ctx *command.Context, kind string) error {
 	))
 }
 
-// addThumbSource menentukan sumber metadata: URL gambar, pesan link-preview
-// yang di-reply, media gambar/stiker yang di-reply, atau gambar pada pesan
-// perintah itu sendiri.
 func addThumbSource(ctx *command.Context, reqCtx context.Context, kind, urlInput string) ([]byte, *thumb.Meta, bool, error) {
 	if urlInput != "" {
 		if !thumb.IsHTTPURL(urlInput) {
@@ -178,8 +175,6 @@ func addThumbSource(ctx *command.Context, reqCtx context.Context, kind, urlInput
 	return nil, nil, false, errors.New("reply gambar atau pesan link-preview, atau sertakan URL gambar")
 }
 
-// metaFromQuoted mengambil metadata yang sudah menempel pada pesan link-preview
-// yang di-reply, sehingga tidak perlu upload ulang.
 func metaFromQuoted(msg *waProto.Message, kind string) *thumb.Meta {
 	ext := msg.GetExtendedTextMessage()
 	if ext == nil {

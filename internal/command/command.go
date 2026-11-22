@@ -20,7 +20,7 @@ type Command struct {
 	Categ   string
 	Desc    string
 	Alias   []string
-	Source  string // path absolut berkas plugin asal, kosong untuk perintah bawaan
+	Source  string
 	Execute func(ctx *Context) error
 }
 
@@ -58,7 +58,6 @@ func (c *Context) sendInternal(target types.JID, msg *waProto.Message) error {
 	return err
 }
 
-// QuotedContext membangun ContextInfo yang mengutip pesan pemicu perintah.
 func (c *Context) QuotedContext() *waProto.ContextInfo {
 	var participant *string
 	if c.IsGroup {
@@ -73,7 +72,6 @@ func (c *Context) QuotedContext() *waProto.ContextInfo {
 	}
 }
 
-// SendMessage mengirim pesan proto apa adanya ke chat asal perintah.
 func (c *Context) SendMessage(msg *waProto.Message) error {
 	return c.sendInternal(c.Chat, msg)
 }

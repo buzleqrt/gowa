@@ -30,7 +30,6 @@ func TestBuildMessagesOrderAndQuote(t *testing.T) {
 		t.Fatalf("jumlah pesan %d, harus 2", len(msgs))
 	}
 
-	// Baileys menampilkan pesan dalam urutan terbalik, jadi indeks 0 adalah "B".
 	first := msgs[0]
 	if id := first.GetKey().GetID(); id != "B" {
 		t.Fatalf("pesan pertama harus B, dapat %q", id)

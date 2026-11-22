@@ -48,7 +48,7 @@ func getResource(ctx context.Context, endpoint, sourceURL, handler string, optio
 		}
 
 		lastErr = fmt.Errorf("Pinterest membalas HTTP %d", status)
-		// Sesi lama bisa ditolak (403/401), jadi ambil ulang sekali.
+
 		if status != http.StatusUnauthorized && status != http.StatusForbidden {
 			break
 		}

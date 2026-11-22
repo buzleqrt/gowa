@@ -19,8 +19,7 @@ type Config struct {
 	IgnoreOffline  bool     `json:"ignore_offline"`
 	DeleteReaction string   `json:"delete_reaction"`
 	PluginDir      string   `json:"plugin_dir"`
-	// IGSessionID adalah nilai cookie sessionid akun Instagram yang dipakai
-	// perintah pencarian (.igsearch). Kosong berarti pencarian dimatikan.
+
 	IGSessionID string `json:"ig_sessionid"`
 	FilePath    string `json:"-"`
 }

@@ -12,11 +12,6 @@ import (
 	_ "golang.org/x/image/webp"
 )
 
-// normalizeImage mengubah gambar WebP menjadi JPEG. Instagram, Pinterest, dan
-// beberapa sumber lain mengirim WebP, sedangkan WhatsApp tidak merender WebP
-// sama sekali — termasuk sebagai isi album, yang tampil kosong.
-//
-// Format lain dibiarkan apa adanya supaya GIF dan PNG tidak berubah.
 func normalizeImage(data []byte, mimeType string) ([]byte, string) {
 	if mimeType == "" || mimeType == "application/octet-stream" {
 		mimeType = http.DetectContentType(data)

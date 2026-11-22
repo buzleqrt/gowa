@@ -12,15 +12,13 @@ import (
 	"strings"
 )
 
-// ErrUserNotFound dikembalikan bila akun Instagram tidak ada atau sudah dihapus.
 var ErrUserNotFound = errors.New("akun Instagram tidak ditemukan")
 
-// ErrPrivateAccount dikembalikan bila akun bersifat privat.
 var ErrPrivateAccount = errors.New("akun Instagram bersifat privat")
 
 var (
 	usernamePattern = regexp.MustCompile(`^[A-Za-z0-9._]{1,30}$`)
-	// Path Instagram yang bukan nama pengguna.
+
 	reservedPaths = map[string]bool{
 		"p": true, "reel": true, "reels": true, "tv": true, "explore": true,
 		"accounts": true, "stories": true, "share": true, "about": true,
@@ -28,13 +26,11 @@ var (
 	}
 )
 
-// BioLink adalah tautan pada bio profil Instagram.
 type BioLink struct {
 	Title string `json:"title"`
 	URL   string `json:"url"`
 }
 
-// LatestPost adalah postingan terbaru pada profil Instagram.
 type LatestPost struct {
 	ID           string `json:"id"`
 	Shortcode    string `json:"shortcode"`
@@ -45,7 +41,6 @@ type LatestPost struct {
 	CommentCount int64  `json:"comment_count"`
 }
 
-// Profile berisi informasi publik sebuah akun Instagram.
 type Profile struct {
 	Source         string       `json:"source"`
 	ID             string       `json:"id"`
@@ -63,7 +58,6 @@ type Profile struct {
 	BioLinks       []BioLink    `json:"bio_links"`
 	LatestPosts    []LatestPost `json:"latest_posts"`
 
-	// Field lama (tetap diisi untuk kompatibilitas).
 	Avatar    string `json:"-"`
 	Verified  bool   `json:"-"`
 	Private   bool   `json:"-"`
@@ -72,7 +66,6 @@ type Profile struct {
 	Profile   string `json:"-"`
 }
 
-// ExtractUsername mengambil nama pengguna dari URL profil, "@nama", atau nama polos.
 func ExtractUsername(raw string) string {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -95,10 +88,6 @@ func ExtractUsername(raw string) string {
 	return raw
 }
 
-// FetchProfile mengambil informasi publik sebuah akun Instagram.
-//
-// Halaman profil biasa (`/<username>/`) dialihkan ke halaman login, jadi data
-// diambil dari halaman embed profil yang tetap disajikan untuk perayap.
 func FetchProfile(ctx context.Context, raw string) (*Profile, error) {
 	username := ExtractUsername(raw)
 	if username == "" {
@@ -143,12 +132,10 @@ func FetchProfile(ctx context.Context, raw string) (*Profile, error) {
 		LatestPosts:   []LatestPost{},
 	}
 
-	// is_private kadang tersedia di level atas, kadang di owner graphql.
 	if v, ok := context["is_private"].(bool); ok {
 		profile.IsPrivate = v
 	}
 
-	// Ambil latest posts dari graphql_media.
 	if gm, ok := context["graphql_media"].([]any); ok {
 		for _, entry := range gm {
 			m, _ := entry.(map[string]any)
@@ -185,7 +172,6 @@ func FetchProfile(ctx context.Context, raw string) (*Profile, error) {
 		}
 	}
 
-	// Sinkronkan field lama.
 	profile.Avatar = profile.ProfilePicURL
 	profile.Verified = profile.IsVerified
 	profile.Private = profile.IsPrivate
@@ -195,7 +181,6 @@ func FetchProfile(ctx context.Context, raw string) (*Profile, error) {
 	return profile, nil
 }
 
-// FormatProfile merangkum profil menjadi teks siap kirim.
 func FormatProfile(p *Profile) string {
 	if p == nil {
 		return ""
@@ -273,8 +258,6 @@ func FormatProfile(p *Profile) string {
 
 type profileContext map[string]any
 
-// extractContext mengambil objek contextJSON yang ditanam sebagai string JSON
-// berlapis di dalam halaman embed profil.
 func extractContext(body []byte) (profileContext, error) {
 	const marker = `"contextJSON":`
 

@@ -97,8 +97,6 @@ func handleIncomingMessage(
 		}
 	}
 
-	// Store pesan dipanggil sebelum filter reaksi/teks/perintah supaya semua
-	// pesan masuk (termasuk media tanpa caption) ikut tersimpan.
 	if msgStore != nil {
 		if err := saveMessage(msgStore, evt); err != nil {
 			util.Debug("Store", "Gagal menyimpan pesan %s: %v", evt.Info.ID, err)
@@ -218,8 +216,6 @@ func saveMessage(store *storage.MessageStore, evt *events.Message) error {
 	return store.Save(record)
 }
 
-// describeMessage menentukan jenis pesan dan teks/caption yang bisa dipakai
-// untuk pencarian maupun tampilan .getmsg.
 func describeMessage(msg *waProto.Message) (kind, text string) {
 	switch {
 	case msg.GetConversation() != "":
@@ -369,8 +365,6 @@ func parseCommandInput(rawText, prefix string, isOwner bool) (trigger string, ar
 		return potentialTrigger, parts[1:], strings.TrimSpace(cleanText[len(parts[0]):]), false, true
 	}
 
-	// "!" adalah pintasan eval: "!1+1" atau "! 1+1" langsung mengeksekusi
-	// kode Go tanpa menulis kata "eval".
 	if isOwner && strings.HasPrefix(trimmed, "!") {
 		code := strings.TrimSpace(trimmed[1:])
 		return "eval", strings.Fields(code), code, true, true

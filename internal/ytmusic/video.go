@@ -15,14 +15,10 @@ import (
 	"sync"
 )
 
-// VideoDefaultMaxBytes adalah batas aman agar video masih bisa dikirim
-// sebagai media WhatsApp (batas media biasa 16 MB).
 const VideoDefaultMaxBytes = 15 << 20
 
-// ErrInvalidVideoURL dikembalikan bila tautan/ID YouTube tidak bisa dibaca.
 var ErrInvalidVideoURL = errors.New("tautan YouTube tidak valid")
 
-// Video adalah satu video YouTube siap kirim.
 type Video struct {
 	VideoID  string `json:"video_id"`
 	Title    string `json:"title"`
@@ -32,8 +28,6 @@ type Video struct {
 	Data     []byte `json:"-"`
 }
 
-// ParseVideoID menerima ID 11 karakter atau tautan YouTube biasa
-// (youtu.be, watch?v=, shorts, embed, live, music.youtube.com).
 func ParseVideoID(raw string) (string, error) {
 	raw = strings.TrimSpace(raw)
 	if videoIDPattern.MatchString(raw) {
@@ -80,9 +74,6 @@ func firstPathSegment(path string) string {
 	return parts[0]
 }
 
-// FetchVideo mengunduh video terbaik yang ukurannya masih di bawah maxBytes,
-// lalu menggabungkannya dengan audio memakai ffmpeg. maxBytes <= 0 memakai
-// VideoDefaultMaxBytes.
 func FetchVideo(ctx context.Context, rawURL string, maxBytes int64) (*Video, error) {
 	videoID, err := ParseVideoID(rawURL)
 	if err != nil {
@@ -170,8 +161,6 @@ func FetchVideo(ctx context.Context, rawURL string, maxBytes int64) (*Video, err
 	return nil, lastErr
 }
 
-// pickVideoAndAudio memilih pasangan video+audio MP4 dengan kualitas
-// tertinggi yang total ukurannya masih di bawah maxBytes.
 func pickVideoAndAudio(formats []apiFormat, maxBytes int64) (apiFormat, apiFormat, error) {
 	audio, ok := pickAudioFormat(formats)
 	if !ok || baseMime(audio.MimeType) != "audio/mp4" {
@@ -197,8 +186,6 @@ func pickVideoAndAudio(formats []apiFormat, maxBytes int64) (apiFormat, apiForma
 		return videoBitrate(videos[i]) > videoBitrate(videos[j])
 	})
 
-	// Kualitas tertinggi yang masih muat; kalau semuanya terlalu besar,
-	// pakai yang paling kecil supaya tetap ada hasil.
 	for _, format := range videos {
 		size := parseSize(format.ContentLength)
 		if size > 0 && size+audioSize <= maxBytes {
@@ -220,8 +207,6 @@ func parseSize(text string) int64 {
 	return size
 }
 
-// muxVideoAudio menggabungkan video-only dan audio-only YouTube menjadi satu
-// MP4. Keduanya AVC/AAC sehingga cukup stream copy, tanpa encode ulang.
 func muxVideoAudio(videoData, audioData []byte) ([]byte, error) {
 	dir, err := os.MkdirTemp("", "gowa-ytvideo-")
 	if err != nil {

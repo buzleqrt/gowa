@@ -8,8 +8,6 @@ import (
 	"time"
 )
 
-// Thumb menyimpan metadata thumbnail/favicon link yang sudah diunggah ke
-// WhatsApp, sehingga pesan preview tautan bisa memakai ulang metadata tersebut.
 type Thumb struct {
 	Name      string `json:"name"`
 	Kind      string `json:"kind"`
@@ -20,7 +18,6 @@ type Thumb struct {
 	UpdatedAt int64  `json:"updated_at"`
 }
 
-// ThumbStore adalah akses tabel thumbnails pada database bot.
 type ThumbStore struct {
 	db *sql.DB
 }
@@ -42,8 +39,6 @@ CREATE TABLE IF NOT EXISTS thumbnails (
 	PRIMARY KEY (name, kind)
 )`
 
-// OpenThumbStore membuka (dan menyiapkan) tabel thumbnails pada database bot.
-// Handle di-cache per path supaya perintah tidak membuka koneksi baru terus.
 func OpenThumbStore(dbPath string) (*ThumbStore, error) {
 	dbPath = strings.TrimSpace(dbPath)
 	if dbPath == "" {
@@ -72,8 +67,6 @@ func OpenThumbStore(dbPath string) (*ThumbStore, error) {
 	return store, nil
 }
 
-// Save menyimpan atau memperbarui metadata thumbnail dengan nama tertentu.
-// Favicon selalu disimpan dengan status random.
 func (s *ThumbStore) Save(name, kind, status, metadata string, expired *int64) error {
 	name = strings.TrimSpace(name)
 	kind = strings.ToLower(strings.TrimSpace(kind))
@@ -105,8 +98,6 @@ func (s *ThumbStore) Save(name, kind, status, metadata string, expired *int64) e
 	return nil
 }
 
-// Get mengambil metadata berdasarkan nama dan jenis. Mengembalikan nil bila
-// tidak ada.
 func (s *ThumbStore) Get(name, kind string) (*Thumb, error) {
 	row := s.db.QueryRow(
 		`SELECT name, kind, status, metadata, expired, created_at, updated_at
@@ -116,7 +107,6 @@ func (s *ThumbStore) Get(name, kind string) (*Thumb, error) {
 	return scanThumb(row)
 }
 
-// Random mengambil satu metadata acak yang belum kedaluwarsa dari pool random.
 func (s *ThumbStore) Random(kind string) (*Thumb, error) {
 	row := s.db.QueryRow(`
 		SELECT name, kind, status, metadata, expired, created_at, updated_at
@@ -128,7 +118,6 @@ func (s *ThumbStore) Random(kind string) (*Thumb, error) {
 	return scanThumb(row)
 }
 
-// List mengembalikan semua metadata untuk satu jenis tanpa field metadata.
 func (s *ThumbStore) List(kind string) ([]Thumb, error) {
 	rows, err := s.db.Query(`
 		SELECT name, kind, status, '' AS metadata, expired, created_at, updated_at
@@ -151,7 +140,6 @@ func (s *ThumbStore) List(kind string) ([]Thumb, error) {
 	return out, rows.Err()
 }
 
-// Delete menghapus metadata berdasarkan nama dan jenis.
 func (s *ThumbStore) Delete(name, kind string) (bool, error) {
 	res, err := s.db.Exec(
 		`DELETE FROM thumbnails WHERE name = ? AND kind = ?`,

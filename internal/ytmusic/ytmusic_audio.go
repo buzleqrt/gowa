@@ -61,8 +61,6 @@ func pickAudioFormat(formats []apiFormat) (apiFormat, bool) {
 	best := apiFormat{}
 	found := false
 
-	// Utamakan audio/mp4 (m4a/AAC) karena paling aman diputar di WhatsApp;
-	// audio/webm (opus) hanya dipakai bila m4a tidak tersedia.
 	for _, format := range formats {
 		if strings.TrimSpace(format.URL) == "" {
 			continue
@@ -87,8 +85,7 @@ func formatScore(format apiFormat) int {
 	if baseMime(format.MimeType) == "audio/mp4" {
 		score += 1_000_000
 	}
-	// YouTube menyediakan beberapa trek audio (bahasa asli + hasil
-	// auto-dubbing). Tanpa prioritas ini yang terambil bisa trek dub.
+
 	if format.AudioTrack.AudioIsDefault {
 		score += 10_000_000
 	}
@@ -108,8 +105,7 @@ func downloadAudio(ctx context.Context, mediaURL, contentLength string, maxBytes
 	req.Header.Set("User-Agent", visionosUA)
 	req.Header.Set("Referer", musicBase+"/")
 	req.Header.Set("Accept", "*/*")
-	// Tanpa Range, server audio YouTube berhenti di sekitar 576 KB dan
-	// koneksi menggantung sampai timeout.
+
 	if size > 0 {
 		req.Header.Set("Range", fmt.Sprintf("bytes=0-%d", size-1))
 	} else {

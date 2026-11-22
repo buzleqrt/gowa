@@ -11,10 +11,6 @@ import (
 	"gowa/internal/util"
 )
 
-// normalizeAudio mengubah fragmented MP4 (DASH) hasil YouTube menjadi M4A
-// biasa. WhatsApp menolak berkas DASH dengan pesan "kesalahan di file audio",
-// jadi sample table harus ditulis ulang sebagai MP4 utuh sebelum dikirim.
-// Bila ffmpeg tidak tersedia, data asli dikembalikan agar unduhan tetap jalan.
 func normalizeAudio(data []byte) []byte {
 	if !isFragmentedMP4(data) {
 		return data
@@ -28,7 +24,6 @@ func normalizeAudio(data []byte) []byte {
 	return out
 }
 
-// isFragmentedMP4 memeriksa keberadaan box moof pada level teratas.
 func isFragmentedMP4(data []byte) bool {
 	for i := 0; i+8 <= len(data); {
 		size := int(binary.BigEndian.Uint32(data[i : i+4]))

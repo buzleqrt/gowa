@@ -1,6 +1,3 @@
-// Package thumb mengelola thumbnail link WhatsApp: mengunggah gambar sebagai
-// media thumbnail-link lalu menyimpan metadatanya supaya bisa dipakai ulang
-// pada pesan dengan preview tautan tanpa upload ulang.
 package thumb
 
 import (
@@ -17,21 +14,17 @@ import (
 )
 
 const (
-	// CDNBase adalah host media WhatsApp untuk menyusun URL dari directPath.
 	CDNBase = "https://mmg.whatsapp.net"
 
-	// KindThumbnail menandai metadata untuk thumbnail link-preview.
 	KindThumbnail = "thumbnail"
-	// KindFavicon menandai metadata untuk favicon link-preview.
+
 	KindFavicon = "favicon"
 
-	// StatusRandom berarti metadata ikut pool acak.
 	StatusRandom = "random"
-	// StatusPrivate berarti metadata tidak ikut pool acak.
+
 	StatusPrivate = "private"
 )
 
-// Meta adalah metadata media thumbnail-link hasil upload WhatsApp.
 type Meta struct {
 	ThumbnailDirectPath string `json:"thumbnailDirectPath,omitempty"`
 	ThumbnailSHA256     []byte `json:"thumbnailSha256,omitempty"`
@@ -45,9 +38,6 @@ type Meta struct {
 	URL                 string `json:"url,omitempty"`
 }
 
-// Upload mengunggah gambar sebagai media thumbnail-link WhatsApp.
-// favicon=true melewati pembuatan JPEGThumbnail kecil karena favicon tidak
-// memakai field tersebut.
 func Upload(ctx context.Context, cli *whatsmeow.Client, image []byte, favicon bool) (*Meta, error) {
 	if cli == nil {
 		return nil, errors.New("client WhatsApp belum siap")
@@ -86,7 +76,6 @@ func Upload(ctx context.Context, cli *whatsmeow.Client, image []byte, favicon bo
 	return meta, nil
 }
 
-// MimeType menebak MIME gambar dari isi berkas.
 func MimeType(image []byte) string {
 	mime := http.DetectContentType(image)
 	if strings.HasPrefix(mime, "image/") {
@@ -95,7 +84,6 @@ func MimeType(image []byte) string {
 	return "image/jpeg"
 }
 
-// CDNURL menyusun URL media WhatsApp dari directPath.
 func CDNURL(directPath string) string {
 	directPath = strings.TrimSpace(directPath)
 	if directPath == "" {
@@ -107,8 +95,6 @@ func CDNURL(directPath string) string {
 	return CDNBase + "/" + strings.TrimPrefix(directPath, "/")
 }
 
-// Expiry mengambil waktu kedaluwarsa dari parameter `oe` (hex unix) pada URL
-// media WhatsApp. Mengembalikan nil bila URL tidak memuat parameter itu.
 func Expiry(rawURL string) *int64 {
 	rawURL = strings.TrimSpace(rawURL)
 	if rawURL == "" {
@@ -129,8 +115,6 @@ func Expiry(rawURL string) *int64 {
 	return &sec
 }
 
-// ExpiryOfMetadata mengembalikan waktu kedaluwarsa metadata, memakai URL
-// lengkap bila ada atau menyusunnya dari directPath.
 func ExpiryOfMetadata(meta *Meta) *int64 {
 	if meta == nil {
 		return nil

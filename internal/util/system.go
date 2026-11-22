@@ -102,7 +102,6 @@ func readCPUInfo() (cpuModel, hardware, processor string) {
 	return cpuModel, hardware, processor
 }
 
-// fieldAfter mengembalikan nilai setelah prefix pada baris pertama yang cocok.
 func fieldAfter(text, prefix string) string {
 	for _, line := range strings.Split(text, "\n") {
 		if !strings.HasPrefix(line, prefix) {
@@ -238,7 +237,6 @@ func loadAvgFormatted() (string, bool) {
 	return fmt.Sprintf("%s, %s, %s", fields[0], fields[1], fields[2]), true
 }
 
-// PRoot containers melaporkan loadavg palsu 0.00 0.00 0.00 1/1 1.
 func isMockPRootLoad() bool {
 	data, err := os.ReadFile("/proc/loadavg")
 	if err != nil {

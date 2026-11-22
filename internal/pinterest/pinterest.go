@@ -1,5 +1,3 @@
-// Package pinterest mengambil data pin dan hasil pencarian Pinterest lewat
-// endpoint resource yang dipakai situs web Pinterest sendiri.
 package pinterest
 
 import (
@@ -23,9 +21,6 @@ const (
 	browserUA        = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
 	maxResponseBytes = 32 << 20
 
-	// Query hash internal situs Pinterest untuk detail pin. Hash v3GetPinQuery
-	// bisa sesekali dibalas AuthGateBlocked, jadi ada retry dan dua cadangan
-	// (v3GetPinQueryv2 dan payload relay di halaman pin).
 	graphqlURL     = baseURL + "/_/graphql/"
 	pinQueryHash   = "91dc7817f1acf1c2fb8d505d1c79dedebcb3baa1794065ba3602b843099f8ff7"
 	pinQueryV2Hash = "4b1b1b5c0de8d6466166acf4e86ac8198a2f7f7729c0ec4fe52843d61e689eba"
@@ -37,15 +32,10 @@ const (
 )
 
 var (
-	// ErrInvalidInput dikembalikan bila input bukan link atau ID pin.
 	ErrInvalidInput = errors.New("link atau ID pin Pinterest tidak valid")
 
-	// ErrPinNotFound dikembalikan bila pin tidak ada atau tidak publik.
 	ErrPinNotFound = errors.New("pin Pinterest tidak ditemukan atau tidak publik")
 
-	// ErrUnsupportedPinID dikembalikan bila input memakai ID buram baru
-	// Pinterest (misalnya "e1_AfqPSh...") yang hanya bisa dibuka lewat
-	// browser, bukan lewat endpoint data publik.
 	ErrUnsupportedPinID = errors.New("pin ini memakai ID baru Pinterest (bukan angka) sehingga tidak bisa diunduh; gunakan link pin dengan ID angka")
 
 	pinIDPattern    = regexp.MustCompile(`(?i)/pin/([0-9]+)`)
@@ -66,21 +56,18 @@ type session struct {
 	expires time.Time
 }
 
-// Pinner adalah pemilik pin.
 type Pinner struct {
 	Username string `json:"username"`
 	FullName string `json:"full_name"`
 	Avatar   string `json:"avatar"`
 }
 
-// Board adalah papan tempat pin disimpan.
 type Board struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 	URL  string `json:"url"`
 }
 
-// Video adalah informasi video pada pin.
 type Video struct {
 	HLSURL      string `json:"hls_url"`
 	DownloadURL string `json:"download_url"`
@@ -89,14 +76,12 @@ type Video struct {
 	Duration    int64  `json:"duration"`
 }
 
-// Item adalah satu gambar pada pin carousel.
 type Item struct {
 	Index int    `json:"index"`
 	Title string `json:"title"`
 	URL   string `json:"url"`
 }
 
-// Pin adalah hasil scraping sebuah pin Pinterest.
 type Pin struct {
 	ID            string  `json:"id"`
 	URL           string  `json:"url"`
@@ -115,14 +100,12 @@ type Pin struct {
 	CreatedAt     string  `json:"created_at"`
 }
 
-// SearchResult adalah hasil pencarian pin.
 type SearchResult struct {
 	Query string `json:"query"`
 	Count int    `json:"count"`
 	Pins  []Pin  `json:"pins"`
 }
 
-// FormatSearch merangkum hasil pencarian menjadi teks siap kirim.
 func FormatSearch(res *SearchResult) string {
 	if res == nil {
 		return ""
@@ -164,7 +147,6 @@ func FormatSearch(res *SearchResult) string {
 	return strings.TrimRight(sb.String(), "\n")
 }
 
-// ExtractPinID mengambil ID numerik dari link Pinterest atau ID mentah.
 func ExtractPinID(ctx context.Context, input string) (string, error) {
 	clean := strings.TrimSpace(input)
 	if clean == "" {
@@ -192,8 +174,6 @@ func ExtractPinID(ctx context.Context, input string) (string, error) {
 	return "", ErrInvalidInput
 }
 
-// Fetch mengambil metadata lengkap sebuah pin lewat GraphQL internal
-// Pinterest, dengan fallback ke payload relay di halaman pin.
 func Fetch(ctx context.Context, input string) (*Pin, error) {
 	pinID, err := ExtractPinID(ctx, input)
 	if err != nil {
@@ -215,7 +195,6 @@ func Fetch(ctx context.Context, input string) (*Pin, error) {
 	return pin, nil
 }
 
-// Search mencari pin Pinterest berdasarkan kata kunci.
 func Search(ctx context.Context, query string, pageSize int) (*SearchResult, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {
@@ -249,20 +228,17 @@ func Search(ctx context.Context, query string, pageSize int) (*SearchResult, err
 	result := &SearchResult{Query: query, Pins: make([]Pin, 0, len(payload.ResourceResponse.Data.Results))}
 	for _, item := range payload.ResourceResponse.Data.Results {
 		pin := item.toPin()
-		// Hasil pencarian juga memuat modul non-pin (misalnya "Explore
-		// featured boards") yang tidak punya media.
+
 		if pin.ID == "" || pin.URL == "" || pin.Image == "" {
 			continue
 		}
-		// Pin video tidak membawa URL video pada hasil pencarian, jadi
-		// hanya ditandai sebagai video tanpa data unduhan.
+
 		result.Pins = append(result.Pins, *pin)
 	}
 	result.Count = len(result.Pins)
 	return result, nil
 }
 
-// DownloadBytes mengunduh media ke memori. maxBytes <= 0 berarti tanpa batas.
 func DownloadBytes(ctx context.Context, mediaURL string, maxBytes int64) ([]byte, error) {
 	mediaURL = strings.TrimSpace(mediaURL)
 	if mediaURL == "" {
@@ -301,7 +277,6 @@ func DownloadBytes(ctx context.Context, mediaURL string, maxBytes int64) ([]byte
 	return data, nil
 }
 
-// MIME menebak tipe media dari ekstensi URL.
 func MIME(mediaURL string) string {
 	path := mediaURL
 	if parsed, err := url.Parse(mediaURL); err == nil && parsed.Path != "" {

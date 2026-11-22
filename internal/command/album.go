@@ -15,15 +15,11 @@ import (
 	"gowa/internal/thumb"
 )
 
-// AlbumItem adalah satu media dalam album WhatsApp. Video didukung lewat
-// ExpectedVideoCount, jadi hasil pencarian campuran foto dan video tetap bisa
-// dikirim sebagai satu album.
 type AlbumItem struct {
 	Data  []byte
 	Video bool
 }
 
-// ReplyAlbum mengirim beberapa gambar sebagai satu album WhatsApp.
 func (c *Context) ReplyAlbum(images [][]byte, caption string) error {
 	items := make([]AlbumItem, len(images))
 	for i, data := range images {
@@ -32,11 +28,6 @@ func (c *Context) ReplyAlbum(images [][]byte, caption string) error {
 	return c.ReplyAlbumMedia(items, caption)
 }
 
-// ReplyAlbumMedia mengirim campuran gambar dan video sebagai satu album.
-//
-// Album dikirim dalam dua tahap: pesan induk berisi jumlah media yang
-// diharapkan, lalu setiap media sebagai pesan anak yang terhubung ke induk
-// lewat MessageAssociation. Caption hanya dipasang pada media pertama.
 func (c *Context) ReplyAlbumMedia(items []AlbumItem, caption string) error {
 	if len(items) == 0 {
 		return errors.New("album tidak berisi media")

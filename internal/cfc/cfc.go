@@ -18,7 +18,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// Spec satu pesan palsu dalam history bundle.
 type Spec struct {
 	Participant string
 	Timestamp   int64
@@ -29,9 +28,6 @@ type Spec struct {
 	QuotedID    string
 }
 
-// Send membangun bundle group-history (protobuf terkompresi) dan mengirimnya
-// ke groupJid yang dialamatkan ke targetJid. Eksperimental: bergantung pada
-// perilaku server WhatsApp; tidak ada garansi render identik dengan CFC Baileys.
 func Send(ctx context.Context, client *whatsmeow.Client, groupJidStr, targetJidStr string, specs []Spec) error {
 	groupJid, err := types.ParseJID(groupJidStr)
 	if err != nil {
@@ -125,7 +121,6 @@ func prepareSpecs(specs []Spec) ([]preparedSpec, map[string]int, int64) {
 	return preps, byID, oldest
 }
 
-// Quoted messages that exist inside the bundle are resolved to their generated ID.
 func buildMessages(preps []preparedSpec, byID map[string]int, groupJid types.JID) []*waWeb.WebMessageInfo {
 	msgs := make([]*waWeb.WebMessageInfo, 0, len(preps))
 	for _, p := range preps {
@@ -166,7 +161,6 @@ func buildMessages(preps []preparedSpec, byID map[string]int, groupJid types.JID
 		msgs = append(msgs, wmi)
 	}
 
-	// Baileys materializes messages in reverse insertion order.
 	for i, j := 0, len(msgs)-1; i < j; i, j = i+1, j-1 {
 		msgs[i], msgs[j] = msgs[j], msgs[i]
 	}

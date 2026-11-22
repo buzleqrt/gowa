@@ -29,8 +29,6 @@ import (
 	"gowa/internal/ytmusic"
 )
 
-// Info mendeskripsikan perintah yang didaftarkan oleh sebuah plugin.
-// Field Name, Categ, dan Desc bersifat opsional dan memiliki nilai default.
 type Info struct {
 	Name  string
 	Cmd   string
@@ -39,7 +37,6 @@ type Info struct {
 	Alias []string
 }
 
-// Exports mendaftarkan simbol Go yang dapat dipakai dari berkas plugin.
 var Exports = interp.Exports{
 	"gowa/internal/plugin/plugin": {
 		"Info":     reflect.ValueOf((*Info)(nil)),
@@ -170,8 +167,6 @@ var (
 	keepAlv []*loader
 )
 
-// Register dipanggil dari dalam berkas plugin (biasanya pada fungsi init)
-// untuk menambahkan perintah ke registry bot.
 func Register(info Info, handler func(ctx *command.Context) error) {
 	mu.Lock()
 	l := active
@@ -252,9 +247,6 @@ func Register(info Info, handler func(ctx *command.Context) error) {
 	l.mu.Unlock()
 }
 
-// LoadDir memuat semua berkas .go pada direktori plugin dan mendaftarkan
-// perintah yang dideklarasikan plugin ke registry. Mengembalikan jumlah
-// perintah yang berhasil didaftarkan.
 func LoadDir(dir string) int {
 	dir = strings.TrimSpace(dir)
 	if dir == "" {
@@ -306,7 +298,6 @@ func LoadDir(dir string) int {
 	return total
 }
 
-// LoadFile memuat satu berkas plugin saat bot sudah berjalan.
 func LoadFile(path string) (int, error) {
 	loadMu.Lock()
 	defer loadMu.Unlock()

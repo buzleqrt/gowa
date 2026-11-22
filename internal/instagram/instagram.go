@@ -17,19 +17,14 @@ import (
 )
 
 const (
-	// crawlerUA dipakai karena Instagram hanya menyajikan HTML lengkap
-	// (server-side rendering) untuk perayap seperti Googlebot; UA browser
-	// biasa hanya menerima shell JavaScript tanpa data media.
 	crawlerUA = "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
 
 	maxResponseBytes = 32 << 20
 )
 
 var (
-	// ErrInvalidURL dikembalikan bila kode post tidak bisa diambil dari input.
 	ErrInvalidURL = errors.New("link Instagram tidak valid")
 
-	// ErrPostUnavailable dikembalikan bila post tidak ada, privat, atau dihapus.
 	ErrPostUnavailable = errors.New("post Instagram tidak tersedia, bersifat privat, atau sudah dihapus")
 
 	codePattern     = regexp.MustCompile(`(?i)/(?:p|reel|reels|tv)/([A-Za-z0-9_-]{5,20})`)
@@ -40,7 +35,6 @@ var (
 	downloadClient = &http.Client{Timeout: 5 * time.Minute}
 )
 
-// Item adalah satu berkas media di dalam sebuah post (foto atau video).
 type Item struct {
 	URL      string `json:"url"`
 	AudioURL string `json:"audio_url,omitempty"`
@@ -49,7 +43,6 @@ type Item struct {
 	Height   int    `json:"height"`
 }
 
-// Metadata adalah hasil scraping sebuah post Instagram.
 type Metadata struct {
 	Code       string `json:"code"`
 	Author     string `json:"author"`
@@ -63,7 +56,6 @@ type Metadata struct {
 	Items      []Item `json:"items"`
 }
 
-// VideoURL mengembalikan URL video pertama pada post, bila ada.
 func (m *Metadata) VideoURL() string {
 	for _, item := range m.Items {
 		if item.Video {
@@ -73,7 +65,6 @@ func (m *Metadata) VideoURL() string {
 	return ""
 }
 
-// Photos mengembalikan seluruh URL foto pada post.
 func (m *Metadata) Photos() []string {
 	out := make([]string, 0, len(m.Items))
 	for _, item := range m.Items {
@@ -84,8 +75,6 @@ func (m *Metadata) Photos() []string {
 	return out
 }
 
-// ExtractCode mengambil kode post dari URL /p/<kode>/, /reel/<kode>/, /tv/<kode>
-// atau dari kode mentah.
 func ExtractCode(raw string) string {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -100,7 +89,6 @@ func ExtractCode(raw string) string {
 	return ""
 }
 
-// Fetch mengambil metadata sebuah post Instagram.
 func Fetch(ctx context.Context, raw string) (*Metadata, error) {
 	code, err := resolve(ctx, raw)
 	if err != nil {
@@ -125,7 +113,6 @@ func Fetch(ctx context.Context, raw string) (*Metadata, error) {
 	return mediaToMetadata(media, code), nil
 }
 
-// DownloadBytes mengunduh media ke memori. maxBytes <= 0 berarti tanpa batas.
 func DownloadBytes(ctx context.Context, mediaURL string, maxBytes int64) ([]byte, error) {
 	mediaURL = strings.TrimSpace(mediaURL)
 	if mediaURL == "" {
@@ -164,9 +151,6 @@ func DownloadBytes(ctx context.Context, mediaURL string, maxBytes int64) ([]byte
 	return data, nil
 }
 
-// DownloadMedia mengunduh satu item media. Bila item video memiliki URL audio
-// terpisah (format DASH Instagram), audio digabungkan dengan ffmpeg agar
-// hasil akhir tetap memiliki suara.
 func DownloadMedia(ctx context.Context, item Item, maxBytes int64) ([]byte, error) {
 	if !item.Video || strings.TrimSpace(item.AudioURL) == "" {
 		return DownloadBytes(ctx, item.URL, maxBytes)
@@ -178,8 +162,7 @@ func DownloadMedia(ctx context.Context, item Item, maxBytes int64) ([]byte, erro
 	}
 	audioData, err := DownloadBytes(ctx, item.AudioURL, maxBytes)
 	if err != nil {
-		// Jangan gagalkan unduhan bila audio terpisah tidak bisa diambil;
-		// kembalikan video polos agar perilaku lama tetap tersedia.
+
 		return videoData, nil
 	}
 
@@ -249,8 +232,6 @@ func resolve(ctx context.Context, raw string) (string, error) {
 		return code, nil
 	}
 
-	// Link pendek seperti instagr.am atau /share/reel/... baru menyimpan kode
-	// setelah dialihkan, jadi ikuti dulu pengalihannya.
 	if !strings.Contains(raw, "://") {
 		raw = "https://" + raw
 	}
@@ -305,8 +286,6 @@ func getBody(ctx context.Context, endpoint, userAgent, referer string) ([]byte, 
 	return body, resp.StatusCode, nil
 }
 
-// findMedia menelusuri state JSON halaman post untuk mencari objek media
-// dengan kode yang diminta.
 func findMedia(body []byte, code string) map[string]any {
 	var fallback map[string]any
 	for _, match := range statePattern.FindAllSubmatch(body, -1) {
@@ -320,8 +299,6 @@ func findMedia(body []byte, code string) map[string]any {
 			continue
 		}
 
-		// Objek utama post berada di dalam "if_not_gated_logged_out";
-		// objek lain di halaman yang sama adalah post terkait.
 		if found := walkState(state, code, true); found != nil {
 			return found
 		}
@@ -423,7 +400,6 @@ func buildItem(m map[string]any) (Item, bool) {
 	return Item{}, false
 }
 
-// bestVideo memilih versi video dengan resolusi terbesar.
 func bestVideo(versions []any) map[string]any {
 	var best map[string]any
 	var bestWidth int64
@@ -441,7 +417,6 @@ func bestVideo(versions []any) map[string]any {
 	return best
 }
 
-// bestImage memilih kandidat gambar dengan resolusi terbesar.
 func bestImage(raw any) string {
 	versions, ok := raw.(map[string]any)
 	if !ok {

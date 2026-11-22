@@ -12,9 +12,6 @@ const (
 	userPostsFriendlyName = "PolarisProfilePostsTabContentQuery_connection"
 )
 
-// FetchUserPosts mengambil postingan publik dari akun Instagram dengan username
-// yang diberikan. Hasilnya memakai struktur SearchResult yang sama dengan
-// Search agar plugin bisa memakai jalur pengunduhan dan album yang sama.
 func FetchUserPosts(ctx context.Context, username string, limit int) (*SearchResult, error) {
 	username = ExtractUsername(username)
 	if username == "" {
@@ -65,9 +62,6 @@ func FetchUserPosts(ctx context.Context, username string, limit int) (*SearchRes
 	}, nil
 }
 
-// ResolveUsername mencoba mengubah teks bebas (misalnya "davina karamoy")
-// menjadi username Instagram yang paling sesuai. Bila input sudah berbentuk
-// username, nilai tersebut dikembalikan apa adanya.
 func ResolveUsername(ctx context.Context, query string) (string, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {
@@ -127,7 +121,7 @@ func collectUserCandidates(root map[string]any) []userCandidate {
 			username := stringValue(value["username"])
 			fullName := stringValue(value["full_name"])
 			if username != "" && !seen[username] && (fullName != "" || stringValue(value["pk"]) != "") {
-				// Pastikan node ini memang objek pengguna, bukan media.
+
 				if _, hasMedia := value["image_versions2"]; !hasMedia {
 					seen[username] = true
 					candidates = append(candidates, userCandidate{

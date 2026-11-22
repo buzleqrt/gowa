@@ -36,8 +36,6 @@ func toPlayableAudio(ctx context.Context, data []byte) ([]byte, string) {
 	return out.Bytes(), "audio/mpeg"
 }
 
-// pickHLS memilih transcoding HLS yang tidak terenkripsi, karena segmen
-// terenkripsi butuh kunci AES yang tidak disediakan API publik.
 func pickHLS(items []apiTranscoding) *apiTranscoding {
 	var fallback *apiTranscoding
 	for i := range items {
@@ -93,8 +91,6 @@ func resolveTranscoding(ctx context.Context, transcodingURL, cid, trackAuth stri
 	return payload.URL, nil
 }
 
-// downloadHLS mengunduh init segment dan seluruh segmen playlist lalu
-// menggabungkannya menjadi satu berkas fMP4.
 func downloadHLS(ctx context.Context, playlistURL string, maxBytes int64) ([]byte, error) {
 	body, status, err := getBody(ctx, playlistURL, homeURL)
 	if err != nil {
@@ -142,7 +138,6 @@ func downloadHLS(ctx context.Context, playlistURL string, maxBytes int64) ([]byt
 		segments = segments[:maxHLSSegments]
 	}
 
-	// Init segment harus paling depan, segmen media tetap berurutan.
 	urls := make([]string, 0, len(segments)+1)
 	if initURL != "" {
 		urls = append(urls, initURL)
@@ -165,9 +160,6 @@ func downloadHLS(ctx context.Context, playlistURL string, maxBytes int64) ([]byt
 	return buf.Bytes(), nil
 }
 
-// downloadParts mengunduh banyak segmen secara paralel tetapi tetap
-// mengembalikan hasil sesuai urutan aslinya, karena segmen HLS tidak boleh
-// digabung acak.
 func downloadParts(ctx context.Context, urls []string, maxBytes int64) ([][]byte, error) {
 	parts := make([][]byte, len(urls))
 	errs := make([]error, len(urls))

@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	maxAudioBytes    = 16 << 20 // batas media audio/video sumber
-	maxCoverBytes    = 25 << 20 // batas unduhan gambar/animation dari link
+	maxAudioBytes    = 16 << 20
+	maxCoverBytes    = 25 << 20
 	staticMaxBytes   = 100 << 10
 	animatedMaxBytes = 500 << 10
 	stickerSize      = 512
@@ -36,7 +36,6 @@ var (
 	ErrNoLink     = errors.New("link harus diawali http:// atau https://")
 )
 
-// Usage adalah teks bantuan perintah stiker audio.
 const Usage = "*Cara pakai:*\n" +
 	"• Reply voice note / audio / mp3 lalu `.audiosticker`\n" +
 	"• Reply video pendek lalu `.audiosticker` — gerakan dan suaranya diambil dari video itu\n" +
@@ -47,19 +46,16 @@ const Usage = "*Cara pakai:*\n" +
 	"Stiker animasi otomatis kalau sumber gambarnya bergerak. Gambar bawaan bisa diganti " +
 	"lewat env `AUDIOSTICKER_IMG` (default `" + defaultImgPath + "`)."
 
-// audioFileExt adalah ekstensi berkas audio yang diterima saat dikirim sebagai dokumen.
 var audioFileExt = map[string]bool{
 	".mp3": true, ".m4a": true, ".aac": true, ".ogg": true, ".oga": true,
 	".opus": true, ".wav": true, ".flac": true, ".amr": true, ".wma": true,
 }
 
-// videoFileExt adalah ekstensi yang dianggap sumber bergerak (stiker animasi).
 var videoFileExt = map[string]bool{
 	".mp4": true, ".m4v": true, ".webm": true, ".mov": true, ".mkv": true,
 	".gif": true, ".avi": true,
 }
 
-// Send membangun dan mengirim stiker bergambar dengan audio dari media yang di-reply.
 func Send(c *command.Context) error {
 	quoted := c.GetQuotedMessage()
 	cmdMsg := command.UnwrapMessage(c.Event.Message)
@@ -79,8 +75,6 @@ func Send(c *command.Context) error {
 		coverMoves bool
 	)
 
-	// Media yang dikirim bersama perintah (foto/video dengan caption
-	// `.audiosticker`) dipakai sebagai gambar stiker, tanpa perlu link.
 	if img := cmdMsg.GetImageMessage(); img != nil {
 		raw, err := c.DownloadMedia(cmdMsg)
 		if err != nil {
@@ -114,7 +108,6 @@ func Send(c *command.Context) error {
 		}
 	}
 
-	// Video yang dikirim sebagai pesan perintah bisa jadi sumber audio sekaligus gambar.
 	if audioData == nil && coverMoves {
 		audioData, audioMime = coverData, "video/mp4"
 	}
@@ -185,11 +178,6 @@ func Send(c *command.Context) error {
 	return nil
 }
 
-// BuildMessage merangkai stiker bergambar + audio memakai media yang sudah diunggah.
-//
-// Baileys melakukan ini dengan menambal encoder protobuf; di whatsmeow kedua field
-// sudah tersedia natively: StickerMessage.audioMessage (oneof audio, tag 26) dan
-// Message.audioStickerMessage (FutureProofMessage, tag 134).
 func BuildMessage(img whatsmeow.UploadResponse, audio whatsmeow.UploadResponse, seconds uint32, animated bool) *waProto.Message {
 	sticker := &waProto.StickerMessage{
 		URL:           &img.URL,
@@ -224,8 +212,6 @@ func BuildMessage(img whatsmeow.UploadResponse, audio whatsmeow.UploadResponse, 
 	}
 }
 
-// quotedAudio mengambil audio dari pesan yang di-reply, baik voice note, audio
-// biasa, maupun berkas audio yang dikirim sebagai dokumen.
 func quotedAudio(msg *waProto.Message) (mimeType string, seconds uint32, ok bool) {
 	if audio := msg.GetAudioMessage(); audio != nil {
 		return audio.GetMimetype(), audio.GetSeconds(), true
@@ -249,8 +235,6 @@ func quotedAudio(msg *waProto.Message) (mimeType string, seconds uint32, ok bool
 	return "", 0, false
 }
 
-// normalizeAudio memastikan audio berformat ogg/opus supaya bisa diputar WhatsApp.
-// Sumber video juga diterima: ffmpeg mengambil track audionya saja.
 func normalizeAudio(ctx context.Context, data []byte, mimeType string) ([]byte, error) {
 	low := strings.ToLower(mimeType)
 	if strings.HasPrefix(low, "audio/ogg") && strings.Contains(low, "opus") {
@@ -288,7 +272,6 @@ func normalizeAudio(ctx context.Context, data []byte, mimeType string) ([]byte, 
 	return out, nil
 }
 
-// stickerImagePath mengembalikan gambar stiker bawaan (env AUDIOSTICKER_IMG).
 func stickerImagePath() string {
 	if p := strings.TrimSpace(os.Getenv("AUDIOSTICKER_IMG")); p != "" {
 		return p
@@ -296,7 +279,6 @@ func stickerImagePath() string {
 	return defaultImgPath
 }
 
-// sniffExt menebak ekstensi berkas dari magic bytes-nya.
 func sniffExt(data []byte) string {
 	switch {
 	case bytes.HasPrefix(data, []byte("RIFF")) && len(data) > 12 && bytes.HasPrefix(data[8:], []byte("WEBP")):
@@ -324,7 +306,6 @@ func sniffExt(data []byte) string {
 	}
 }
 
-// isAnimatedWebP memeriksa chunk ANIM pada header webp.
 func isAnimatedWebP(data []byte) bool {
 	if len(data) < 16 || !bytes.HasPrefix(data, []byte("RIFF")) {
 		return false
@@ -340,8 +321,6 @@ func isGIF(data []byte) bool {
 	return bytes.HasPrefix(data, []byte("GIF8"))
 }
 
-// normalizeLink merapikan link yang ditempel pengguna: tanda kutip/spasi
-// berlebih, dan skema https:// yang lupa ditulis.
 func normalizeLink(link string) string {
 	link = strings.TrimSpace(link)
 	link = strings.Trim(link, "<>\"'`")
@@ -354,8 +333,6 @@ func normalizeLink(link string) string {
 	return link
 }
 
-// isMovingMedia mendeteksi media bergerak dari isi berkas, bukan dari header
-// Content-Type yang sering salah di CDN.
 func isMovingMedia(data []byte) bool {
 	switch {
 	case isGIF(data), isAnimatedWebP(data):
@@ -370,7 +347,6 @@ func isMovingMedia(data []byte) bool {
 	return false
 }
 
-// fetchSource mengunduh gambar/video dari link dan menandai apakah isinya bergerak.
 func fetchSource(ctx context.Context, link string) ([]byte, bool, error) {
 	link = normalizeLink(link)
 	lower := strings.ToLower(link)

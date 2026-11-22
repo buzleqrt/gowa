@@ -82,8 +82,6 @@ func Generate(ctx context.Context, desc string) (Song, error) {
 	return res.Songs[0], nil
 }
 
-// friendlyFailure menerjemahkan kode error SonivaMusic yang sering muncul
-// menjadi kalimat yang bisa dimengerti pengguna perintah.
 func friendlyFailure(runErr error, raw string) string {
 	switch {
 	case strings.Contains(raw, "INSUFFICIENT_CREDITS"):

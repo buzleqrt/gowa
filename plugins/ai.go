@@ -28,7 +28,6 @@ func init() {
 	}, handleAI)
 }
 
-// aiPaths mengembalikan path sesi device bersama dan konteks percakapan per chat.
 func aiPaths(ctx *command.Context) (string, string) {
 	chat := "unknown"
 	if !ctx.Chat.IsEmpty() {
@@ -107,7 +106,6 @@ func handleAI(ctx *command.Context) error {
 	return nil
 }
 
-// splitAIText memecah balasan panjang pada batas baris/spasi terdekat.
 func splitAIText(text string, limit int) []string {
 	if len(text) <= limit {
 		return []string{text}

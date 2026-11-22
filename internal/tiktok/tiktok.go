@@ -21,11 +21,8 @@ const (
 )
 
 var (
-	// ErrInvalidURL dikembalikan bila ID post tidak bisa diambil dari input.
 	ErrInvalidURL = errors.New("link TikTok tidak valid")
 
-	// ErrPostUnavailable dikembalikan bila TikTok memastikan post tidak ada,
-	// sehingga tidak perlu mencoba layanan cadangan.
 	ErrPostUnavailable = errors.New("post TikTok tidak tersedia, bersifat privat, atau sudah dihapus")
 
 	idPattern            = regexp.MustCompile(`(?i)/(?:video|v|photo)/(\d{15,22})`)
@@ -38,14 +35,12 @@ var (
 	downloadClient       = &http.Client{Timeout: 5 * time.Minute}
 )
 
-// Music berisi informasi trek suara yang dipakai pada sebuah post.
 type Music struct {
 	Title  string `json:"title"`
 	Author string `json:"author"`
 	URL    string `json:"url"`
 }
 
-// Metadata adalah hasil scraping sebuah post TikTok (video, foto, atau audio).
 type Metadata struct {
 	ID                string   `json:"id"`
 	Author            string   `json:"author"`
@@ -69,12 +64,10 @@ type Metadata struct {
 	Photos            []string `json:"photos"`
 }
 
-// DownloadOptions mengatur jenis media yang diunduh.
 type DownloadOptions struct {
 	Audio bool
 }
 
-// ExtractID mengambil ID numerik post dari sebuah URL atau ID mentah.
 func ExtractID(raw string) string {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -89,7 +82,6 @@ func ExtractID(raw string) string {
 	return ""
 }
 
-// FormatDuration mengubah durasi dalam detik menjadi MM:SS atau HH:MM:SS.
 func FormatDuration(seconds int) string {
 	if seconds <= 0 {
 		return "00:00"
@@ -103,17 +95,12 @@ func FormatDuration(seconds int) string {
 	return fmt.Sprintf("%02d:%02d", m, s)
 }
 
-// Fetch mengambil metadata sebuah post TikTok.
-// Sumber utama adalah halaman embed resmi TikTok; bila halaman itu tidak
-// memuat data, fungsi ini jatuh ke layanan tikwm.com sebagai cadangan.
 func Fetch(ctx context.Context, rawURL string) (*Metadata, error) {
 	id, pageURL, err := resolve(ctx, rawURL)
 	if err != nil {
 		return nil, err
 	}
 
-	// Cadangan dijalankan paralel: layanan tikwm lambat (~10 detik), jadi bot
-	// tidak perlu menunggu percobaan API mobile selesai lebih dulu.
 	fallbackCtx, cancelFallback := context.WithCancel(ctx)
 	defer cancelFallback()
 
@@ -127,8 +114,6 @@ func Fetch(ctx context.Context, rawURL string) (*Metadata, error) {
 		fallback <- fallbackResult{md: md, err: err}
 	}()
 
-	// URL tanpa watermark hanya tersedia dari API mobile, jadi permintaannya
-	// dijalankan bersamaan dengan metadata supaya tidak menumpuk waktunya.
 	cleanURL := make(chan string, 1)
 	go func() {
 		cleanURL <- fetchMobilePlayURL(fallbackCtx, id)
@@ -136,8 +121,7 @@ func Fetch(ctx context.Context, rawURL string) (*Metadata, error) {
 
 	md, embedErr := fetchEmbed(ctx, id)
 	if embedErr == nil {
-		// Gambar post foto dan trek audio tidak pernah berwatermark; hanya
-		// stream video dari halaman embed yang membawa watermark TikTok.
+
 		if md.VideoURL == "" {
 			cancelFallback()
 			return md, nil
@@ -166,7 +150,6 @@ func Fetch(ctx context.Context, rawURL string) (*Metadata, error) {
 	return nil, fmt.Errorf("%w (embed: %v)", result.err, embedErr)
 }
 
-// DownloadBytes mengunduh media ke memori. maxBytes <= 0 berarti tanpa batas.
 func DownloadBytes(ctx context.Context, mediaURL string, maxBytes int64) ([]byte, error) {
 	mediaURL = strings.TrimSpace(mediaURL)
 	if mediaURL == "" {
@@ -205,7 +188,6 @@ func DownloadBytes(ctx context.Context, mediaURL string, maxBytes int64) ([]byte
 	return data, nil
 }
 
-// DownloadTo mengunduh media ke path tujuan.
 func DownloadTo(ctx context.Context, mediaURL, dest string) error {
 	data, err := DownloadBytes(ctx, mediaURL, 0)
 	if err != nil {
@@ -219,7 +201,6 @@ func DownloadTo(ctx context.Context, mediaURL, dest string) error {
 	return os.WriteFile(dest, data, 0o644)
 }
 
-// DownloadMedia menyimpan video, seluruh foto, atau audio dari sebuah post.
 func DownloadMedia(ctx context.Context, md *Metadata, dir string, opts DownloadOptions) ([]string, error) {
 	if md == nil {
 		return nil, errors.New("metadata kosong")

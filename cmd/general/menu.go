@@ -13,7 +13,6 @@ import (
 	waProto "go.mau.fi/whatsmeow/proto/waE2E"
 )
 
-// menuURL adalah tautan yang ditampilkan pada preview kartu menu.
 const menuURL = "https://wa.me/6283175676190"
 
 func init() {
@@ -75,10 +74,6 @@ func handleMenu(ctx *command.Context) error {
 	return ctx.Reply(text)
 }
 
-// buildMenuPreview menyusun menu sebagai pesan link-preview dengan thumbnail
-// random dari database, seperti sendThumbnail pada base zapo-js. Mengembalikan
-// nil bila tidak ada thumbnail tersimpan, supaya menu tetap terkirim sebagai
-// teks biasa.
 func buildMenuPreview(ctx *command.Context, botTitle, text string) *waProto.Message {
 	if ctx.Client == nil || ctx.Config == nil || strings.TrimSpace(ctx.Config.DBPath) == "" {
 		return nil

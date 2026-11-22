@@ -16,20 +16,13 @@ import (
 	"unicode"
 )
 
-// ErrSearchLoginRequired dikembalikan bila permintaan pencarian ditolak
-// Instagram karena tidak ada sesi login yang valid.
 var ErrSearchLoginRequired = errors.New("pencarian Instagram membutuhkan cookie sessionid akun (isi \"ig_sessionid\" di config.json)")
 
-// ErrTagNotFound dikembalikan bila pencarian tidak menghasilkan media.
 var ErrTagNotFound = errors.New("hasil pencarian Instagram tidak ditemukan")
 
 const (
-	// browserUA dipakai untuk jalur web karena Instagram hanya menyajikan data
-	// pencarian ke klien yang terlihat seperti browser biasa.
 	browserUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 
-	// igAppID dan igASBDID adalah application id web Instagram yang wajib
-	// dikirim pada setiap permintaan API.
 	igAppID   = "936619743392459"
 	igASBDID  = "129477"
 	igAppVer  = "17841474779645119"
@@ -37,8 +30,6 @@ const (
 	tagPageEP = "https://www.instagram.com/explore/tags/%s/"
 	homeEP    = "https://www.instagram.com/"
 
-	// keywordSearchDocID adalah doc_id query PolarisKeywordSearchExplorePageRelayQuery.
-	// Query ini menggantikan endpoint web_info yang sudah dihapus Instagram.
 	keywordSearchDocID        = "30002314729354907"
 	keywordSearchFriendlyName = "PolarisKeywordSearchExplorePageRelayQuery"
 )
@@ -56,9 +47,6 @@ var (
 	igDIDPattern = regexp.MustCompile(`"_js_ig_did":\{"value":"([^"]+)"`)
 )
 
-// SetSessionID menyimpan nilai cookie sessionid akun Instagram yang dipakai
-// untuk pencarian. Nilai boleh berupa nilai sessionid saja atau string cookie
-// utuh (misalnya "sessionid=...; csrftoken=...").
 func SetSessionID(value string) {
 	sessionMu.Lock()
 	defer sessionMu.Unlock()
@@ -85,7 +73,6 @@ func normalizeSessionID(value string) string {
 	return strings.TrimSpace(value)
 }
 
-// dsUserID mengambil angka user id dari sessionid (bagian sebelum pemisah %3A).
 func dsUserID() string {
 	value := currentSessionID()
 	if idx := strings.Index(value, "%3A"); idx > 0 {
@@ -97,26 +84,14 @@ func dsUserID() string {
 	return ""
 }
 
-// SearchResult adalah hasil pencarian Instagram, baik dari hashtag maupun dari
-// postingan sebuah akun.
 type SearchResult struct {
 	Query string `json:"query"`
 	Tag   string `json:"tag"`
-	// Account berisi username bila hasil berasal dari postingan akun.
+
 	Account string      `json:"account,omitempty"`
 	Posts   []*Metadata `json:"posts"`
 }
 
-// Search mencari post Instagram berdasarkan kata kunci hashtag.
-//
-// Instagram tidak lagi menyediakan endpoint web_info untuk pencarian. Proses
-// yang dipakai sekarang meniru halaman /explore/tags/<tag>/:
-//  1. buka halaman tag untuk mengambil token lsd, csrf, fb_dtsg, dan claim;
-//  2. kirim query GraphQL PolarisKeywordSearchExplorePageRelayQuery;
-//  3. urai media hasilnya dengan parser yang sama seperti Fetch.
-//
-// Langkah 1 membutuhkan cookie sessionid karena Instagram memberi token claim
-// hanya untuk pengunjung yang login.
 func Search(ctx context.Context, query string, limit int) (*SearchResult, error) {
 	tag := normalizeTag(query)
 	if tag == "" {
@@ -155,9 +130,6 @@ func clampLimit(limit int) int {
 	return limit
 }
 
-// normalizeTag mengubah "anime", "#anime", atau "one piece" menjadi nama
-// hashtag yang valid. Spasi dan tanda baca dibuang karena hashtag Instagram
-// tidak boleh memuatnya.
 func normalizeTag(query string) string {
 	query = strings.TrimSpace(query)
 	query = strings.TrimPrefix(query, "#")
@@ -176,8 +148,6 @@ func normalizeTag(query string) string {
 	return tag
 }
 
-// webSession menyimpan token yang dibutuhkan untuk memanggil GraphQL, diambil
-// dari HTML halaman Instagram yang dibuka dengan cookie sesi.
 type webSession struct {
 	LSD   string
 	CSRF  string
@@ -199,8 +169,6 @@ func loadWebSession(ctx context.Context, pageURL string) (*webSession, error) {
 	req.Header.Set("Sec-Fetch-Dest", "document")
 	req.Header.Set("Cookie", sessionCookie())
 
-	// Jangan ikuti pengalihan: bila sesi tidak valid, Instagram mengalihkan
-	// ke halaman login dan bisa berakhir pada redirect loop.
 	client := *httpClient
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
@@ -238,15 +206,12 @@ func loadWebSession(ctx context.Context, pageURL string) (*webSession, error) {
 		IGDID: firstMatch(igDIDPattern, page),
 	}
 
-	// Claim hanya dikirim ke pengunjung yang login, jadi ketiadaannya berarti
-	// sessionid tidak berlaku lagi.
 	if session.LSD == "" || session.DTSG == "" || session.Claim == "" {
 		return nil, ErrSearchLoginRequired
 	}
 	return session, nil
 }
 
-// keywordSearch menjalankan query pencarian kata kunci Instagram.
 func (s *webSession) keywordSearch(ctx context.Context, referer, query string) (map[string]any, error) {
 	requestID := randomID()
 	variables := map[string]string{
@@ -257,7 +222,6 @@ func (s *webSession) keywordSearch(ctx context.Context, referer, query string) (
 	return s.graphql(ctx, referer, keywordSearchDocID, keywordSearchFriendlyName, variables)
 }
 
-// graphql mengirim satu query Relay ke Instagram dan mengurai hasilnya.
 func (s *webSession) graphql(ctx context.Context, referer, docID, friendlyName string, variables any) (map[string]any, error) {
 	variablesJSON, err := json.Marshal(variables)
 	if err != nil {
@@ -313,7 +277,6 @@ func (s *webSession) graphql(ctx context.Context, referer, docID, friendlyName s
 		return nil, fmt.Errorf("permintaan Instagram membalas HTTP %d", resp.StatusCode)
 	}
 
-	// Respons GraphQL web diawali penanda anti-JSON-hijacking.
 	trimmed := strings.TrimPrefix(string(body), "for (;;);")
 
 	var root map[string]any
@@ -330,8 +293,6 @@ func (s *webSession) graphql(ctx context.Context, referer, docID, friendlyName s
 	return root, nil
 }
 
-// setBrowserHeaders melengkapi header yang diperiksa Instagram untuk memastikan
-// permintaan berasal dari browser, bukan skrip.
 func setBrowserHeaders(req *http.Request, referer string) {
 	req.Header.Set("User-Agent", browserUA)
 	req.Header.Set("Accept", "*/*")
@@ -347,7 +308,6 @@ func setBrowserHeaders(req *http.Request, referer string) {
 	req.Header.Set("Sec-Fetch-Dest", "empty")
 }
 
-// sessionCookie menyusun cookie untuk membuka halaman Instagram.
 func sessionCookie() string {
 	parts := []string{"sessionid=" + currentSessionID()}
 	if id := dsUserID(); id != "" {
@@ -356,9 +316,6 @@ func sessionCookie() string {
 	return strings.Join(parts, "; ")
 }
 
-// cookieHeader melengkapi cookie dengan nilai dari halaman yang dibuka (csrf,
-// datr, ig_did) supaya sidik klien GraphQL konsisten dengan halaman yang
-// membuka tokennya.
 func (s *webSession) cookieHeader() string {
 	parts := []string{sessionCookie()}
 	if s.CSRF != "" {
@@ -373,9 +330,6 @@ func (s *webSession) cookieHeader() string {
 	return strings.Join(parts, "; ")
 }
 
-// collectSearchPosts menelusuri hasil GraphQL untuk mengambil objek media.
-// Setiap node media berisi "code" serta image_versions2/video_versions, jadi
-// penelusuran umum cukup untuk berbagai bentuk respons pencarian.
 func collectSearchPosts(root map[string]any, limit int) []*Metadata {
 	var posts []*Metadata
 	seen := make(map[string]bool)
@@ -404,8 +358,7 @@ func collectSearchPosts(root map[string]any, limit int) []*Metadata {
 func walkForMedia(node any, add func(map[string]any) bool) {
 	switch value := node.(type) {
 	case map[string]any:
-		// Media carousel memuat media anak dengan kode berbeda; berhenti di
-		// node media supaya satu post tidak terhitung beberapa kali.
+
 		if looksLikeMedia(value) {
 			add(value)
 			return
@@ -439,8 +392,6 @@ func firstMatch(pattern *regexp.Regexp, value string) string {
 	return ""
 }
 
-// jazoest diturunkan dari fb_dtsg dengan menjumlahkan kode setiap karakternya,
-// lalu diberi awalan "2". Instagram menolak permintaan tanpa nilai ini.
 func jazoest(dtsg string) string {
 	sum := 0
 	for _, r := range dtsg {

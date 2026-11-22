@@ -29,10 +29,8 @@ const (
 )
 
 var (
-	// ErrEmptyQuery dikembalikan bila kata kunci pencarian kosong.
 	ErrEmptyQuery = errors.New("judul lagu tidak boleh kosong")
 
-	// ErrNotFound dikembalikan bila YouTube Music tidak memberi hasil.
 	ErrNotFound = errors.New("lagu tidak ditemukan di YouTube Music")
 
 	videoIDPattern  = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)
@@ -47,7 +45,6 @@ var (
 	visitorExp time.Time
 )
 
-// Track adalah satu hasil pencarian lagu YouTube Music.
 type Track struct {
 	VideoID           string `json:"video_id"`
 	Title             string `json:"title"`
@@ -59,7 +56,6 @@ type Track struct {
 	URL               string `json:"url"`
 }
 
-// Audio adalah berkas audio siap kirim untuk satu video YouTube Music.
 type Audio struct {
 	VideoID  string `json:"video_id"`
 	Title    string `json:"title"`
@@ -69,7 +65,6 @@ type Audio struct {
 	Data     []byte `json:"-"`
 }
 
-// Search mencari lagu berdasarkan judul memakai InnerTube WEB_REMIX.
 func Search(ctx context.Context, query string, limit int) ([]Track, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {
@@ -117,8 +112,6 @@ func Search(ctx context.Context, query string, limit int) ([]Track, error) {
 	return tracks, nil
 }
 
-// FetchAudio mengambil URL audio langsung lewat client VISIONOS lalu
-// mengunduhnya ke memori. maxBytes <= 0 berarti tanpa batas ukuran.
 func FetchAudio(ctx context.Context, videoID string, maxBytes int64) (*Audio, error) {
 	videoID = strings.TrimSpace(videoID)
 	if !videoIDPattern.MatchString(videoID) {
@@ -144,8 +137,7 @@ func FetchAudio(ctx context.Context, videoID string, maxBytes int64) (*Audio, er
 				reason = status
 			}
 			lastErr = fmt.Errorf("YouTube Music menolak pemutaran: %s", reason)
-			// visitorData basi memicu "Sign in to confirm you're not a bot";
-			// ambil ulang sekali sebelum menyerah.
+
 			if attempt == 0 && strings.Contains(strings.ToLower(reason), "sign in") {
 				continue
 			}

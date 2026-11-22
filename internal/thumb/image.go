@@ -12,10 +12,8 @@ import (
 	_ "image/png"
 )
 
-// thumbWidth adalah lebar JPEGThumbnail link-preview, mengikuti WhatsApp Web.
 const thumbWidth = 120
 
-// Dimensions membaca lebar dan tinggi gambar tanpa mendekode seluruh piksel.
 func Dimensions(data []byte) (uint32, uint32) {
 	cfg, _, err := image.DecodeConfig(bytes.NewReader(data))
 	if err != nil || cfg.Width <= 0 || cfg.Height <= 0 {
@@ -24,8 +22,6 @@ func Dimensions(data []byte) (uint32, uint32) {
 	return uint32(cfg.Width), uint32(cfg.Height)
 }
 
-// JPEGThumb membuat JPEG kecil (lebar maksimal 120px, kualitas 40) untuk field
-// JPEGThumbnail pada pesan preview tautan.
 func JPEGThumb(data []byte) ([]byte, error) {
 	img, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {

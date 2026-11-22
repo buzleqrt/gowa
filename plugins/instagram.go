@@ -56,7 +56,6 @@ func handleInstagram(ctx *command.Context) error {
 
 	caption := buildInstagramCaption(md)
 
-	// Post video tunggal dikirim sebagai video dengan keterangan.
 	if len(md.Items) == 1 && md.Items[0].Video {
 		data, err := instagram.DownloadMedia(dlCtx, md.Items[0], instagramMaxMediaBytes)
 		if err != nil {
@@ -73,8 +72,6 @@ func handleInstagram(ctx *command.Context) error {
 			return ctx.Send(fmt.Sprintf("*Gagal mengunduh media %d/%d:*\n%v", i+1, total, err))
 		}
 
-		// Caption ditempelkan pada media pertama agar tidak terpisah
-		// menjadi pesan teks tersendiri.
 		itemCaption := ""
 		if !captionSent {
 			itemCaption = caption
@@ -116,8 +113,6 @@ func buildInstagramCaption(md *instagram.Metadata) string {
 	}
 	sb.WriteString("*Instagram - @" + author + "*")
 
-	// Caption dikirim utuh (bukan hanya baris pertama), dipangkas agar
-	// tetap aman di bawah batas caption WhatsApp (~1024 karakter).
 	text := strings.TrimSpace(md.Caption)
 	if len(text) > instagramCaptionLimit {
 		text = strings.TrimSpace(text[:instagramCaptionLimit]) + "…"

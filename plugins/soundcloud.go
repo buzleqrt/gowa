@@ -51,8 +51,6 @@ func handleSoundCloudSearch(ctx *command.Context) error {
 		return ctx.Reply(fmt.Sprintf("*Tidak ditemukan:*\ntidak ada lagu publik yang cocok dengan _%s_", query))
 	}
 
-	// Sebagian track hanya menyediakan HLS terenkripsi, jadi hasil
-	// pencarian dicoba berurutan sampai ada audio yang bisa diunduh.
 	var lastErr error
 	for _, track := range result.Tracks {
 		audio, err := soundcloud.FetchAudio(reqCtx, track.ID, soundcloudMaxAudioBytes)

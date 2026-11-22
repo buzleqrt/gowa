@@ -5,8 +5,6 @@ import (
 	"strings"
 )
 
-// flexText menerima teks Pinterest yang kadang berupa string biasa dan
-// kadang berupa objek {"text": ...} (misalnya judul hasil pencarian).
 type flexText string
 
 func (t *flexText) UnmarshalJSON(data []byte) error {
@@ -172,7 +170,7 @@ func (p framePin) toPin() *Pin {
 	case p.StoryPinData != nil && len(p.StoryPinData.Pages) > 0:
 		appendStory(result, p.StoryPinData.Pages)
 	}
-	// Slot carousel tanpa URL gambar tidak dihitung sebagai carousel.
+
 	result.IsCarousel = len(result.Carousel) > 0
 
 	switch {

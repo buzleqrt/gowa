@@ -50,7 +50,6 @@ func buildTitle(description, author string) string {
 	return "TikTok Post"
 }
 
-// flexInt64 menerima angka JSON yang bisa berupa number maupun string.
 type flexInt64 int64
 
 func (f *flexInt64) UnmarshalJSON(data []byte) error {
@@ -181,7 +180,7 @@ func (d embedVideoData) toMetadata() *Metadata {
 	if audioURL != "" {
 		md.Music = &Music{Title: d.MusicInfos.MusicName, Author: d.MusicInfos.AuthorName, URL: audioURL}
 	}
-	// Pada post foto, field video bisa berisi stream audio, bukan video.
+
 	if len(photos) > 0 {
 		md.VideoURL = ""
 	}
@@ -254,7 +253,7 @@ func (d tikwmDetail) toMetadata() *Metadata {
 	if audioURL != "" {
 		md.Music = &Music{Title: d.MusicInfo.Title, Author: d.MusicInfo.Author, URL: audioURL}
 	}
-	// tikwm mengisi field play dengan audio untuk post foto.
+
 	if len(photos) > 0 {
 		md.VideoURL = ""
 	}

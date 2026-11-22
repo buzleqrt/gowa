@@ -49,15 +49,13 @@ func searchWithClientID(ctx context.Context, cid, query string, limit int) (*Sea
 		}
 		result.Tracks = append(result.Tracks, track)
 	}
-	// Sebagian respons membawa lebih dari limit yang diminta.
+
 	if len(result.Tracks) > limit {
 		result.Tracks = result.Tracks[:limit]
 	}
 	return result, nil
 }
 
-// getClientID mengembalikan client_id yang masih berlaku. refresh=true
-// memaksa pengambilan ulang walaupun cache belum kedaluwarsa.
 func getClientID(ctx context.Context, refresh bool) (string, error) {
 	clientIDMu.Lock()
 	if !refresh && clientIDVal != "" && time.Now().Before(clientIDExp) {
@@ -80,8 +78,6 @@ func getClientID(ctx context.Context, refresh bool) (string, error) {
 	return cid, nil
 }
 
-// discoverClientID mencari client_id di HTML halaman depan, lalu pada bundle
-// JavaScript yang dimuat halaman tersebut.
 func discoverClientID(ctx context.Context) (string, error) {
 	html, status, err := getBody(ctx, homeURL, homeURL)
 	if err != nil {
@@ -100,8 +96,6 @@ func discoverClientID(ctx context.Context) (string, error) {
 		return "", errors.New("bundle JavaScript SoundCloud tidak ditemukan")
 	}
 
-	// Beberapa bundle diunduh paralel dan yang pertama memuat client_id
-	// langsung dipakai, karena hanya satu dari banyak bundle yang menyimpannya.
 	findCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -210,7 +204,7 @@ type apiTrack struct {
 	PermalinkURL  string `json:"permalink_url"`
 	ArtworkURL    string `json:"artwork_url"`
 	Genre         string `json:"genre"`
-	Duration      int    `json:"duration"` // milidetik
+	Duration      int    `json:"duration"`
 	PlaybackCount int64  `json:"playback_count"`
 	LikesCount    int64  `json:"likes_count"`
 	CreatedAt     string `json:"created_at"`

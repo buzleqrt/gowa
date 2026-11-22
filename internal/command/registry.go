@@ -41,7 +41,6 @@ func Register(cmd *Command) {
 	}
 }
 
-// Unregister menghapus perintah beserta seluruh alias-nya dari registry.
 func Unregister(name string) (*Command, bool) {
 	mu.Lock()
 	defer mu.Unlock()

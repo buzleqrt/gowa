@@ -11,16 +11,13 @@ import (
 )
 
 const (
-	// maxFetchBytes membatasi ukuran gambar yang diunduh dari URL.
 	maxFetchBytes = 10 << 20
-	// fetchTimeout membatasi durasi unduhan gambar.
+
 	fetchTimeout = 30 * time.Second
 )
 
 var fetchClient = &http.Client{Timeout: fetchTimeout}
 
-// Fetch mengunduh gambar dari URL, dengan batas ukuran 10 MB dan verifikasi
-// bahwa isinya benar-benar gambar.
 func Fetch(ctx context.Context, rawURL string) ([]byte, error) {
 	if !IsHTTPURL(rawURL) {
 		return nil, errors.New("URL tidak valid")
@@ -60,7 +57,6 @@ func Fetch(ctx context.Context, rawURL string) ([]byte, error) {
 	return data, nil
 }
 
-// IsHTTPURL melaporkan apakah nilai diawali http:// atau https://.
 func IsHTTPURL(value string) bool {
 	lower := strings.ToLower(strings.TrimSpace(value))
 	return strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://")

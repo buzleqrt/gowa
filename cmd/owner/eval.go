@@ -29,13 +29,11 @@ func init() {
 
 const yaegiTimeout = 30 * time.Second
 
-// Prelude sengaja satu baris supaya nomor baris error yaegi sama dengan baris snippet.
 const yaegiPrelude = "package evalrun; " +
 	`import ("bytes"; "context"; "encoding/json"; "errors"; "fmt"; "io"; "math"; "net/http"; "os"; "regexp"; "sort"; "strconv"; "strings"; "time"; "evalenv"; "gowa/internal/command"); ` +
 	`var (_ = bytes.NewBuffer; _ = context.Background; _ = json.Marshal; _ = errors.New; _ = fmt.Sprint; _ = io.EOF; _ = math.Pi; _ = http.StatusOK; _ = os.Getenv; _ = regexp.MustCompile; _ = sort.Ints; _ = strconv.Itoa; _ = strings.TrimSpace; _ = time.Now; _ = evalenv.Ctx; _ = (*command.Context)(nil)); ` +
 	`func run() (_r interface{}) { ctx := evalenv.Ctx; _ = ctx; `
 
-// Isi dengan symbol tambahan (struct/fungsi bot) supaya bisa dipakai dari snippet.
 var yaegiExtraSymbols = interp.Exports{}
 
 type yaegiOutput struct {
@@ -101,9 +99,6 @@ func handleYaegiEval(ctx *command.Context) error {
 	return ctx.Reply(formatEvalOutput(fmt.Sprintf("_%s_", elapsed), text))
 }
 
-// runYaegi menjalankan snippet. Ekspresi sederhana tanpa "return" dan tanpa
-// pemanggilan fungsi (mis. "1+1") otomatis dibungkus jadi "return 1+1" supaya
-// nilainya tampil, dengan fallback ke bentuk asli bila gagal dikompilasi.
 func runYaegi(parent context.Context, botCtx *command.Context, code string, out io.Writer) (interface{}, error) {
 	if isSingleExpression(code) {
 		if res, err := runYaegiSource(parent, botCtx, "return "+strings.TrimSpace(code), out); err == nil {

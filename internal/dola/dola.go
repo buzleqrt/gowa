@@ -11,7 +11,6 @@ import (
 	"strings"
 )
 
-// Reply adalah hasil satu percakapan dengan Dola/Nova AI.
 type Reply struct {
 	Text         string `json:"text"`
 	Conversation string `json:"conversation_id"`
@@ -40,7 +39,6 @@ func scriptPath() string {
 	return filepath.Join(wd, "scripts", "dola.js")
 }
 
-// proxyList membaca DOLA_PROXY yang boleh berisi beberapa proxy dipisah koma.
 func proxyList() []string {
 	raw := strings.Split(os.Getenv("DOLA_PROXY"), ",")
 	var list []string
@@ -74,8 +72,7 @@ func run(ctx context.Context, proxy, sessionPath, convPath, stdin string, args .
 	if convPath != "" {
 		cmd.Env = append(cmd.Env, "DOLA_CONV_PATH="+convPath)
 	}
-	// Layanan ini memblokir sebagian region; kalau DOLA_PROXY diisi, fetch Node
-	// (NODE_USE_ENV_PROXY) akan memakai proxy tersebut.
+
 	if proxy != "" {
 		cmd.Env = append(cmd.Env,
 			"HTTP_PROXY="+proxy,
@@ -101,7 +98,6 @@ func run(ctx context.Context, proxy, sessionPath, convPath, stdin string, args .
 	return stdout.String(), nil
 }
 
-// errorText mengambil baris pesan asli dari stderr, membuang baris progres.
 func errorText(raw string) string {
 	var lines []string
 	for _, line := range strings.Split(raw, "\n") {
@@ -133,7 +129,6 @@ func errorText(raw string) string {
 	return msg
 }
 
-// Ask mengirim prompt memakai device pada sessionPath dan konteks chat pada convPath.
 func Ask(ctx context.Context, sessionPath, convPath, prompt string) (Reply, error) {
 	prompt = strings.TrimSpace(prompt)
 	if prompt == "" {
@@ -160,7 +155,6 @@ func Ask(ctx context.Context, sessionPath, convPath, prompt string) (Reply, erro
 	return reply, nil
 }
 
-// runWithRetry mencoba tiap proxy pada DOLA_PROXY saat koneksi gagal.
 func runWithRetry(ctx context.Context, sessionPath, convPath, stdin string, args ...string) (string, error) {
 	proxies := proxyList()
 	attempts := len(proxies)
@@ -195,7 +189,6 @@ func runWithRetry(ctx context.Context, sessionPath, convPath, stdin string, args
 	return "", lastErr
 }
 
-// Reset memulai percakapan baru untuk satu chat (device tetap dipakai ulang).
 func Reset(ctx context.Context, sessionPath, convPath string) error {
 	_, err := runWithRetry(ctx, sessionPath, convPath, "", "--new")
 	return err

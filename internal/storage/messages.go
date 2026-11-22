@@ -7,9 +7,6 @@ import (
 	"sync"
 )
 
-// Message adalah satu pesan yang tersimpan di store pesan. Seq adalah nomor
-// urut global (urutan masuk), sedangkan StanzaID adalah ID pesan WhatsApp yang
-// unik per chat.
 type Message struct {
 	Seq       int64
 	Chat      string
@@ -25,7 +22,6 @@ type Message struct {
 	Raw       []byte
 }
 
-// MessageStore adalah akses tabel messages pada database bot.
 type MessageStore struct {
 	db *sql.DB
 }
@@ -55,9 +51,6 @@ CREATE INDEX IF NOT EXISTS idx_messages_chat_ts ON messages(chat, ts DESC, seq D
 CREATE INDEX IF NOT EXISTS idx_messages_sender_ts ON messages(chat, sender, ts DESC);
 CREATE INDEX IF NOT EXISTS idx_messages_sender_pn_ts ON messages(chat, sender_pn, ts DESC);`
 
-// OpenMessageStore membuka (dan menyiapkan) tabel messages pada database bot.
-// Handle di-cache per path supaya event handler dan perintah memakai koneksi
-// yang sama.
 func OpenMessageStore(dbPath string) (*MessageStore, error) {
 	dbPath = strings.TrimSpace(dbPath)
 	if dbPath == "" {
@@ -80,8 +73,7 @@ func OpenMessageStore(dbPath string) (*MessageStore, error) {
 		db.Close()
 		return nil, fmt.Errorf("gagal menyiapkan tabel messages: %w", err)
 	}
-	// Tabel dari versi sebelumnya belum punya push_name; error "duplicate
-	// column" memang diabaikan.
+
 	_, _ = db.Exec(`ALTER TABLE messages ADD COLUMN push_name TEXT NOT NULL DEFAULT ''`)
 
 	store := &MessageStore{db: db}
@@ -91,9 +83,6 @@ func OpenMessageStore(dbPath string) (*MessageStore, error) {
 
 const messageColumns = `seq, chat, stanza_id, sender, sender_pn, push_name, is_group, from_me, ts, msg_type, text, raw`
 
-// Save menyimpan pesan. Pesan dengan stanza ID yang sama pada chat yang sama
-// diabaikan (INSERT OR IGNORE), sehingga event duplikat tidak menghasilkan
-// baris ganda.
 func (s *MessageStore) Save(m *Message) error {
 	if m == nil {
 		return fmt.Errorf("pesan kosong")
@@ -117,8 +106,6 @@ func (s *MessageStore) Save(m *Message) error {
 	return nil
 }
 
-// GetByStanzaID mengambil satu pesan berdasarkan stanza ID pada chat tertentu.
-// ID pesan WhatsApp hanya unik per chat, jadi chat wajib disertakan.
 func (s *MessageStore) GetByStanzaID(chat, stanzaID string) (*Message, error) {
 	row := s.db.QueryRow(
 		`SELECT `+messageColumns+` FROM messages WHERE chat = ? AND stanza_id = ?`,
@@ -127,7 +114,6 @@ func (s *MessageStore) GetByStanzaID(chat, stanzaID string) (*Message, error) {
 	return scanMessage(row)
 }
 
-// Latest mengambil n pesan terbaru pada chat, diurutkan dari yang paling baru.
 func (s *MessageStore) Latest(chat string, n int) ([]Message, error) {
 	if n <= 0 {
 		return nil, nil
@@ -153,10 +139,6 @@ func (s *MessageStore) Latest(chat string, n int) ([]Message, error) {
 	return out, rows.Err()
 }
 
-// LatestConversation mengambil n pesan terbaru pada chat yang benar-benar
-// percakapan: bukan pesan bot sendiri dan bukan pesan sistem. Penyaringan
-// dilakukan di SQL supaya batas n tidak habis oleh entri protokol seperti
-// senderKeyDistributionMessage.
 func (s *MessageStore) LatestConversation(chat string, n int) ([]Message, error) {
 	if n <= 0 {
 		return nil, nil
@@ -183,10 +165,6 @@ func (s *MessageStore) LatestConversation(chat string, n int) ([]Message, error)
 	return out, rows.Err()
 }
 
-// deviceSuffixExpr adalah ekspresi SQL yang membuang sufiks device dari JID,
-// misalnya `628123:5@s.whatsapp.net` menjadi `628123@s.whatsapp.net`. Arsip
-// menyimpan bentuk apa adanya, sedangkan target dari mention/tag biasanya tanpa
-// sufiks, jadi perbandingan harus dinormalkan dulu.
 const deviceSuffixExpr = `CASE WHEN instr(%s, ':') > 0
 	THEN substr(%s, 1, instr(%s, ':') - 1) || substr(%s, instr(%s, '@'))
 	ELSE %s END`
@@ -195,9 +173,6 @@ func normalizedSenderSQL(column string) string {
 	return fmt.Sprintf(deviceSuffixExpr, column, column, column, column, column, column)
 }
 
-// NthFromSenders mengambil pesan ke-n terbaru (n dimulai dari 1) yang dikirim
-// salah satu JID pada chat tersebut. Senders boleh berisi JID LID maupun nomor
-// telepon, karena baris menyimpan keduanya.
 func (s *MessageStore) NthFromSenders(chat string, senders []string, n int) (*Message, error) {
 	if n <= 0 {
 		return nil, nil
@@ -238,8 +213,6 @@ func (s *MessageStore) NthFromSenders(chat string, senders []string, n int) (*Me
 	return scanMessage(row)
 }
 
-// BySenders mengambil maksimal limit pesan terbaru pada chat yang dikirim
-// salah satu JID pada senders (dicocokkan ke sender maupun sender_pn).
 func (s *MessageStore) BySenders(chat string, senders []string, limit int) ([]Message, error) {
 	if limit <= 0 {
 		return nil, nil
@@ -293,7 +266,6 @@ func (s *MessageStore) BySenders(chat string, senders []string, limit int) ([]Me
 	return out, rows.Err()
 }
 
-// Count menghitung jumlah pesan tersimpan untuk satu chat.
 func (s *MessageStore) Count(chat string) (int, error) {
 	var total int
 	err := s.db.QueryRow(`SELECT COUNT(*) FROM messages WHERE chat = ?`, strings.TrimSpace(chat)).Scan(&total)

@@ -22,10 +22,8 @@ const (
 )
 
 var (
-	// ErrInvalidURL dikembalikan bila input bukan link atau kode share Facebook.
 	ErrInvalidURL = errors.New("link Facebook tidak valid")
 
-	// ErrNoMedia dikembalikan bila halaman tidak memuat video maupun foto publik.
 	ErrNoMedia = errors.New("tidak ada media publik yang bisa diunduh (post privat, teks saja, atau bukan post)")
 
 	urlPattern   = regexp.MustCompile(`(?i)https?://(?:www\.|m\.|web\.|lm\.)?(?:facebook\.com|fb\.watch|fb\.com|fb\.me)/[^\s"'<>]+`)
@@ -52,9 +50,8 @@ var (
 	downloadClient = &http.Client{Timeout: 5 * time.Minute}
 )
 
-// Metadata adalah hasil scraping satu post Facebook.
 type Metadata struct {
-	Type       string // "video" atau "image"
+	Type       string
 	Title      string
 	Caption    string
 	Username   string
@@ -69,8 +66,6 @@ type Metadata struct {
 	Images     []string
 }
 
-// ExtractURL mengambil link Facebook dari teks, atau membangun link dari
-// kode share pendek (mis. "AbCdEf123456").
 func ExtractURL(input string) string {
 	input = strings.TrimSpace(input)
 	if input == "" {
@@ -85,7 +80,6 @@ func ExtractURL(input string) string {
 	return ""
 }
 
-// Fetch membuka link Facebook dan mengambil metadata media di dalamnya.
 func Fetch(ctx context.Context, raw string) (*Metadata, error) {
 	target := ExtractURL(raw)
 	if target == "" {
@@ -104,7 +98,6 @@ func Fetch(ctx context.Context, raw string) (*Metadata, error) {
 	return md, nil
 }
 
-// DownloadBytes mengunduh media ke memori. maxBytes <= 0 berarti tanpa batas.
 func DownloadBytes(ctx context.Context, mediaURL string, maxBytes int64) ([]byte, error) {
 	mediaURL = strings.TrimSpace(mediaURL)
 	if mediaURL == "" {
@@ -228,7 +221,7 @@ func parse(page, permalink string) *Metadata {
 		(photoTypePattern.MatchString(page) || albumStartPatt.MatchString(page))
 
 	if len(hd) == 0 && len(sd) == 0 && !isPhoto {
-		// Tetap dikembalikan sebagai metadata kosong; pemanggil memeriksa ErrNoMedia.
+
 		return &Metadata{Type: "none", Title: title, Caption: description, Permalink: permalink}
 	}
 

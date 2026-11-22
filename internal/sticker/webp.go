@@ -17,12 +17,9 @@ import (
 
 const (
 	maxAnimFrames   = 240
-	maxAnimDuration = 6000 // ms, cukup untuk stiker WhatsApp
+	maxAnimDuration = 6000
 )
 
-// decodeAnimatedWebP mengurai frame webp animasi secara manual karena ffmpeg
-// 4.4 di server belum bisa men-decode animasi webp. Setiap frame ANMF diubah
-// menjadi webp mandiri lalu di-decode dengan decoder statis.
 func decodeAnimatedWebP(data []byte) ([]image.Image, []uint, error) {
 	if len(data) < 21 || !bytes.HasPrefix(data, []byte("RIFF")) || string(data[8:12]) != "WEBP" {
 		return nil, nil, errors.New("bukan berkas webp")
@@ -162,7 +159,6 @@ func decodeANMFFrame(payload []byte) (*animFrame, uint, error) {
 	}, uint(delay), nil
 }
 
-// buildWebP membungkus satu frame menjadi berkas webp mandiri.
 func buildWebP(alpha []byte, bitstreamType string, bitstream []byte, w, h int) []byte {
 	var body bytes.Buffer
 	body.WriteString("WEBP")
@@ -180,7 +176,7 @@ func buildWebP(alpha []byte, bitstreamType string, bitstream []byte, w, h int) [
 
 	if alpha != nil {
 		vp8x := make([]byte, 10)
-		vp8x[0] = 0x10 // flag alpha
+		vp8x[0] = 0x10
 		writeUint24(vp8x[4:7], uint32(w-1))
 		writeUint24(vp8x[7:10], uint32(h-1))
 		writeChunk("VP8X", vp8x)
@@ -216,8 +212,6 @@ func writeUint24(b []byte, v uint32) {
 	b[2] = byte(v >> 16)
 }
 
-// renderFrames mengubah frame hasil decode menjadi webp animasi 512x512 lewat
-// stdin ffmpeg dalam bentuk rawvideo RGBA.
 func renderFrames(ctx context.Context, ffmpeg string, frames []image.Image, delays []uint, quality, seconds int) ([]byte, string, error) {
 	if len(frames) == 0 {
 		return nil, "", errors.New("tidak ada frame")
@@ -242,7 +236,6 @@ func renderFrames(ctx context.Context, ffmpeg string, frames []image.Image, dela
 		fps = 30
 	}
 
-	// Batasi jumlah frame agar tidak melebihi durasi maksimal.
 	limit := seconds * 1000
 	var raw bytes.Buffer
 	elapsed := 0

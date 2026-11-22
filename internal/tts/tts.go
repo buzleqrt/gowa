@@ -1,6 +1,3 @@
-// Package tts mengubah teks menjadi voice note memakai layanan AnyToSpeech
-// (voice "Anime Girl Shy"). Teks panjang dipecah per kalimat, tiap potongan
-// diunduh sebagai mp3, lalu digabung dan dikonversi ke ogg/opus.
 package tts
 
 import (
@@ -41,8 +38,6 @@ var (
 	httpClient   = &http.Client{Timeout: requestTimeout}
 )
 
-// CleanText membuang penanda markdown, tautan, dan merapikan spasi supaya
-// audio tidak membacakan simbol.
 func CleanText(text string) string {
 	var b strings.Builder
 	b.Grow(len(text))
@@ -68,8 +63,6 @@ func CleanText(text string) string {
 	return strings.Join(out, " ")
 }
 
-// SplitChunks memecah teks menjadi potongan <= maxLen karakter pada batas
-// kalimat; kalimat yang terlalu panjang dipecah paksa per kata.
 func SplitChunks(text string, maxLen int) []string {
 	if maxLen <= 0 {
 		maxLen = chunkMaxChars
@@ -115,7 +108,7 @@ func SplitChunks(text string, maxLen int) []string {
 }
 
 func splitSentences(text string) []string {
-	// Pecah setelah tanda baca kalimat yang diikuti spasi.
+
 	var out []string
 	start := 0
 	runes := []rune(text)
@@ -176,7 +169,6 @@ func splitWords(text string, maxLen int) []string {
 	return out
 }
 
-// Synthesize menghasilkan voice note ogg/opus beserta durasinya dalam detik.
 func Synthesize(ctx context.Context, text string) ([]byte, uint32, error) {
 	clean := CleanText(text)
 	if clean == "" {
@@ -353,7 +345,6 @@ func mergeToOpus(ctx context.Context, chunks [][]byte) ([]byte, error) {
 	return out, nil
 }
 
-// durationSeconds membaca durasi ogg lewat ffprobe; 0 bila gagal dibaca.
 func durationSeconds(ctx context.Context, data []byte) uint32 {
 	dir, err := os.MkdirTemp("", "gowa-tts-dur-*")
 	if err != nil {
