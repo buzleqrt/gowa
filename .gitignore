@@ -21,11 +21,8 @@ data/
 .vscode/
 
 # Node dependencies
-scripts/node_modules/
 node_modules/
 
 # Config & session / credential files (jangan pernah di-commit)
 config.json
-scripts/aimusic_session.json
-scripts/scripts/dola_sessions/
 *.session.json

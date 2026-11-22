@@ -31,14 +31,6 @@ func nodeBinary() string {
 	return "node"
 }
 
-func scriptPath() string {
-	wd, err := os.Getwd()
-	if err != nil {
-		return filepath.Join("scripts", "dola.js")
-	}
-	return filepath.Join(wd, "scripts", "dola.js")
-}
-
 func proxyList() []string {
 	raw := strings.Split(os.Getenv("DOLA_PROXY"), ",")
 	var list []string
@@ -62,12 +54,21 @@ func isTransportError(msg string) bool {
 }
 
 func run(ctx context.Context, proxy, sessionPath, convPath, stdin string, args ...string) (string, error) {
-	script := scriptPath()
-	if _, err := os.Stat(script); err != nil {
-		return "", fmt.Errorf("skrip dola tidak ditemukan di %s", script)
+	tmpFile, err := os.CreateTemp("", "dola-*.js")
+	if err != nil {
+		return "", fmt.Errorf("gagal membuat berkas sementara dola: %w", err)
 	}
-	cmd := exec.CommandContext(ctx, nodeBinary(), append([]string{script}, args...)...)
-	cmd.Dir = filepath.Dir(script)
+	tmpPath := tmpFile.Name()
+	if _, err := tmpFile.Write(dolaScript); err != nil {
+		tmpFile.Close()
+		os.Remove(tmpPath)
+		return "", fmt.Errorf("gagal menulis skrip dola: %w", err)
+	}
+	tmpFile.Close()
+	defer os.Remove(tmpPath)
+
+	cmd := exec.CommandContext(ctx, nodeBinary(), append([]string{tmpPath}, args...)...)
+	cmd.Dir = filepath.Dir(tmpPath)
 	cmd.Env = append(os.Environ(), "DOLA_SESSION_PATH="+sessionPath)
 	if convPath != "" {
 		cmd.Env = append(cmd.Env, "DOLA_CONV_PATH="+convPath)
