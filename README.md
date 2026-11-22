@@ -132,8 +132,8 @@ Data disimpan pada tabel `thumbnails` di database bot (`db_path`) lewat `interna
 
 ```go
 store, _ := storage.OpenThumbStore(cfg.DBPath)
-row, _ := store.Get("nama", thumb.KindThumbnail)   // metadata tertentu
-row, _ = store.Random(thumb.KindThumbnail)         // acak, melewati yang expired
+row, _ := store.Get("nama", thumb.KindThumbnail)
+row, _ = store.Random(thumb.KindThumbnail)
 rows, _ := store.List(thumb.KindFavicon)
 ```
 
