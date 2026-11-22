@@ -176,6 +176,12 @@ func Fetch(ctx context.Context, link, mediaType string) (*Result, error) {
 	return result, nil
 }
 
+// Available melaporkan apakah berkas scraper X bisa ditemukan.
+func Available() bool {
+	_, err := scraperPath()
+	return err == nil
+}
+
 func scraperPath() (string, error) {
 	var candidates []string
 	if dir := strings.TrimSpace(os.Getenv("X_SCRAPER_DIR")); dir != "" {

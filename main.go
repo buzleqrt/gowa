@@ -11,6 +11,7 @@ import (
 	"gowa/internal/plugin"
 	"gowa/internal/storage"
 	"gowa/internal/util"
+	"gowa/internal/xscraper"
 
 	_ "gowa/cmd"
 )
@@ -37,6 +38,10 @@ func main() {
 	instagram.SetSessionID(cfg.IGSessionID)
 
 	plugin.LoadDir(cfg.PluginDir)
+
+	if !xscraper.Available() {
+		util.Warn("X", "x-scraper-node tidak ditemukan; perintah .x tidak akan jalan (letakkan foldernya di samping bot atau set X_SCRAPER_DIR)")
+	}
 
 	fmt.Println()
 	fmt.Println("  \033[1;36m╭──────────────────────────────────────────────╮\033[0m")

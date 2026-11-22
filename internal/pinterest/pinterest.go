@@ -714,8 +714,6 @@ func appendStory(result *Pin, pages []storyPage) {
 	}
 }
 
-// --- Detail pin via GraphQL ---
-
 func fetchPinGraphQL(ctx context.Context, pinID string) (map[string]json.RawMessage, error) {
 	var lastErr error
 	for attempt := 0; attempt < 3; attempt++ {
@@ -839,8 +837,6 @@ func sleepWithContext(ctx context.Context, d time.Duration) {
 	case <-timer.C:
 	}
 }
-
-// --- Fallback: payload relay di halaman pin ---
 
 func fetchPinRelay(ctx context.Context, pinID string) (map[string]json.RawMessage, error) {
 	target := baseURL + "/pin/" + pinID + "/"
@@ -984,8 +980,6 @@ func fetchPlaylist(ctx context.Context, target string) ([]byte, bool) {
 	}
 	return body, true
 }
-
-// --- Mapping detail pin ---
 
 type detailImage struct {
 	URL    string `json:"url"`

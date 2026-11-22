@@ -100,8 +100,8 @@ func dsUserID() string {
 // SearchResult adalah hasil pencarian Instagram, baik dari hashtag maupun dari
 // postingan sebuah akun.
 type SearchResult struct {
-	Query string      `json:"query"`
-	Tag   string      `json:"tag"`
+	Query string `json:"query"`
+	Tag   string `json:"tag"`
 	// Account berisi username bila hasil berasal dari postingan akun.
 	Account string      `json:"account,omitempty"`
 	Posts   []*Metadata `json:"posts"`

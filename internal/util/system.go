@@ -58,166 +58,193 @@ func GetProcessRSS() string {
 
 func GetHardwareReport() (processor, cpu, cpuLoad, gpu string) {
 	numCPU := runtime.NumCPU()
-	processor = ""
-	cpuModel := ""
-	hardware := ""
+	cpuModel, hardware, processor := readCPUInfo()
+	maxFreqGHz := readMaxFreqGHz(numCPU)
+	processor = resolveProcessor(processor, cpuModel, hardware)
+	return processor, describeCPU(numCPU, cpuModel, processor, maxFreqGHz), readCPULoad(numCPU), detectGPU()
+}
 
+func readCPUInfo() (cpuModel, hardware, processor string) {
 	if data, err := os.ReadFile("/proc/cpuinfo"); err == nil {
-		lines := strings.Split(string(data), "\n")
-		for _, line := range lines {
+		for _, line := range strings.Split(string(data), "\n") {
 			parts := strings.SplitN(line, ":", 2)
-			if len(parts) == 2 {
-				key := strings.TrimSpace(parts[0])
-				val := strings.TrimSpace(parts[1])
-
-				if (key == "model name" || key == "Model Name") && cpuModel == "" {
-					cpuModel = val
-				} else if key == "Hardware" && hardware == "" {
-					hardware = val
-				} else if key == "Processor" && processor == "" {
-					processor = val
-				}
+			if len(parts) != 2 {
+				continue
+			}
+			key := strings.TrimSpace(parts[0])
+			val := strings.TrimSpace(parts[1])
+			if (key == "model name" || key == "Model Name") && cpuModel == "" {
+				cpuModel = val
+			} else if key == "Hardware" && hardware == "" {
+				hardware = val
+			} else if key == "Processor" && processor == "" {
+				processor = val
 			}
 		}
 	}
 
 	if cpuModel == "" {
 		if out, err := exec.Command("lscpu").Output(); err == nil {
-			lines := strings.Split(string(out), "\n")
-			for _, line := range lines {
-				if strings.HasPrefix(line, "Model name:") {
-					parts := strings.SplitN(line, ":", 2)
-					if len(parts) == 2 {
-						cpuModel = strings.TrimSpace(parts[1])
-						break
-					}
-				}
-			}
+			cpuModel = fieldAfter(string(out), "Model name:")
 		}
 	}
 
 	if processor == "" {
-		if runtime.GOOS == "darwin" {
+		switch runtime.GOOS {
+		case "darwin":
 			if out, err := exec.Command("sysctl", "-n", "machdep.cpu.brand_string").Output(); err == nil {
 				processor = strings.TrimSpace(string(out))
 			}
-		} else if runtime.GOOS == "windows" {
+		case "windows":
 			processor = os.Getenv("PROCESSOR_IDENTIFIER")
 		}
 	}
+	return cpuModel, hardware, processor
+}
 
+// fieldAfter mengembalikan nilai setelah prefix pada baris pertama yang cocok.
+func fieldAfter(text, prefix string) string {
+	for _, line := range strings.Split(text, "\n") {
+		if !strings.HasPrefix(line, prefix) {
+			continue
+		}
+		if parts := strings.SplitN(line, ":", 2); len(parts) == 2 {
+			return strings.TrimSpace(parts[1])
+		}
+	}
+	return ""
+}
+
+func readMaxFreqGHz(numCPU int) float64 {
 	maxFreqGHz := 0.0
 	for i := 0; i < numCPU; i++ {
 		freqPath := fmt.Sprintf("/sys/devices/system/cpu/cpu%d/cpufreq/cpuinfo_max_freq", i)
-		if fData, err := os.ReadFile(freqPath); err == nil {
-			if khz, err := strconv.ParseFloat(strings.TrimSpace(string(fData)), 64); err == nil {
-				ghz := khz / 1000000.0
-				if ghz > maxFreqGHz {
-					maxFreqGHz = ghz
-				}
-			}
+		fData, err := os.ReadFile(freqPath)
+		if err != nil {
+			continue
+		}
+		khz, err := strconv.ParseFloat(strings.TrimSpace(string(fData)), 64)
+		if err == nil && khz/1000000.0 > maxFreqGHz {
+			maxFreqGHz = khz / 1000000.0
 		}
 	}
 
 	if maxFreqGHz == 0 {
 		if out, err := exec.Command("lscpu").Output(); err == nil {
-			lines := strings.Split(string(out), "\n")
-			for _, line := range lines {
-				if strings.HasPrefix(line, "CPU max MHz:") || (strings.HasPrefix(line, "CPU MHz:") && maxFreqGHz == 0) {
-					parts := strings.SplitN(line, ":", 2)
-					if len(parts) == 2 {
-						if mhz, err := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64); err == nil && mhz > 0 {
-							maxFreqGHz = mhz / 1000.0
-						}
-					}
+			for _, line := range strings.Split(string(out), "\n") {
+				if !strings.HasPrefix(line, "CPU max MHz:") && !strings.HasPrefix(line, "CPU MHz:") {
+					continue
+				}
+				parts := strings.SplitN(line, ":", 2)
+				if len(parts) != 2 {
+					continue
+				}
+				if mhz, err := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64); err == nil && mhz > 0 {
+					maxFreqGHz = mhz / 1000.0
+					break
 				}
 			}
 		}
 	}
+	return maxFreqGHz
+}
 
+func resolveProcessor(processor, cpuModel, hardware string) string {
 	if hardware != "" {
-		processor = hardware
-	} else if processor == "" && cpuModel != "" {
-		processor = cpuModel
-	} else if processor == "" {
-		processor = fmt.Sprintf("%s Processor", strings.ToUpper(runtime.GOARCH))
+		return hardware
 	}
+	if processor == "" && cpuModel != "" {
+		return cpuModel
+	}
+	if processor == "" {
+		return fmt.Sprintf("%s Processor", strings.ToUpper(runtime.GOARCH))
+	}
+	return processor
+}
 
+func describeCPU(numCPU int, cpuModel, processor string, maxFreqGHz float64) string {
 	freqStr := ""
 	if maxFreqGHz > 0 && !strings.Contains(processor, "@") && !strings.Contains(cpuModel, "@") {
 		freqStr = fmt.Sprintf(" @ %.2f GHz", maxFreqGHz)
 	}
-
 	if cpuModel != "" && cpuModel != processor {
-		cpu = fmt.Sprintf("%d cores (%s%s)", numCPU, cpuModel, freqStr)
-	} else {
-		cpu = fmt.Sprintf("%d cores%s", numCPU, freqStr)
+		return fmt.Sprintf("%d cores (%s%s)", numCPU, cpuModel, freqStr)
 	}
+	return fmt.Sprintf("%d cores%s", numCPU, freqStr)
+}
 
+func detectGPU() string {
 	if out, err := exec.Command("nvidia-smi", "--query-gpu=name", "--format=csv,noheader").Output(); err == nil {
-		g := strings.TrimSpace(string(out))
-		if g != "" {
-			gpu = strings.Split(g, "\n")[0]
-		}
-	}
-	if gpu == "" {
-		if out, err := exec.Command("lspci").Output(); err == nil {
-			lines := strings.Split(string(out), "\n")
-			for _, line := range lines {
-				lower := strings.ToLower(line)
-				if strings.Contains(lower, "vga compatible controller") || strings.Contains(lower, "3d controller") || strings.Contains(lower, "display controller") {
-					parts := strings.SplitN(line, ":", 3)
-					if len(parts) == 3 {
-						gpu = strings.TrimSpace(parts[2])
-						break
-					}
-				}
-			}
-		}
-	}
-	if gpu == "" {
-		gpu = "None (Headless)"
-	}
-
-	cpuLoad = "N/A"
-	if data, err := os.ReadFile("/proc/loadavg"); err == nil {
-		fields := strings.Fields(string(data))
-		if len(fields) >= 3 {
-			loadStr := fmt.Sprintf("%s, %s, %s", fields[0], fields[1], fields[2])
-			isMockPRoot := len(fields) >= 5 && fields[0] == "0.00" && fields[1] == "0.00" && fields[2] == "0.00" && fields[3] == "1/1" && fields[4] == "1"
-			if !isMockPRoot {
-				cpuLoad = loadStr
-			}
+		if g := strings.TrimSpace(string(out)); g != "" {
+			return strings.Split(g, "\n")[0]
 		}
 	}
 
-	if cpuLoad == "N/A" {
-		totalRatio := 0.0
-		validCores := 0
-		for i := 0; i < numCPU; i++ {
-			curP := fmt.Sprintf("/sys/devices/system/cpu/cpu%d/cpufreq/scaling_cur_freq", i)
-			maxP := fmt.Sprintf("/sys/devices/system/cpu/cpu%d/cpufreq/cpuinfo_max_freq", i)
-			curData, err1 := os.ReadFile(curP)
-			maxData, err2 := os.ReadFile(maxP)
-			if err1 == nil && err2 == nil {
-				cur, _ := strconv.ParseFloat(strings.TrimSpace(string(curData)), 64)
-				max, _ := strconv.ParseFloat(strings.TrimSpace(string(maxData)), 64)
-				if max > 0 {
-					totalRatio += (cur / max)
-					validCores++
-				}
+	if out, err := exec.Command("lspci").Output(); err == nil {
+		for _, line := range strings.Split(string(out), "\n") {
+			lower := strings.ToLower(line)
+			if !strings.Contains(lower, "vga compatible controller") &&
+				!strings.Contains(lower, "3d controller") &&
+				!strings.Contains(lower, "display controller") {
+				continue
 			}
-		}
-		if validCores > 0 {
-			avg := (totalRatio / float64(validCores)) * 100.0
-			cpuLoad = fmt.Sprintf("%.1f%%", avg)
-		} else if data, err := os.ReadFile("/proc/loadavg"); err == nil {
-			fields := strings.Fields(string(data))
-			if len(fields) >= 3 {
-				cpuLoad = fmt.Sprintf("%s, %s, %s", fields[0], fields[1], fields[2])
+			if parts := strings.SplitN(line, ":", 3); len(parts) == 3 {
+				return strings.TrimSpace(parts[2])
 			}
 		}
 	}
+	return "None (Headless)"
+}
 
-	return processor, cpu, cpuLoad, gpu
+func readCPULoad(numCPU int) string {
+	if load, ok := loadAvgFormatted(); ok && !isMockPRootLoad() {
+		return load
+	}
+
+	totalRatio := 0.0
+	validCores := 0
+	for i := 0; i < numCPU; i++ {
+		curData, err1 := os.ReadFile(fmt.Sprintf("/sys/devices/system/cpu/cpu%d/cpufreq/scaling_cur_freq", i))
+		maxData, err2 := os.ReadFile(fmt.Sprintf("/sys/devices/system/cpu/cpu%d/cpufreq/cpuinfo_max_freq", i))
+		if err1 != nil || err2 != nil {
+			continue
+		}
+		cur, _ := strconv.ParseFloat(strings.TrimSpace(string(curData)), 64)
+		max, _ := strconv.ParseFloat(strings.TrimSpace(string(maxData)), 64)
+		if max > 0 {
+			totalRatio += cur / max
+			validCores++
+		}
+	}
+	if validCores > 0 {
+		return fmt.Sprintf("%.1f%%", (totalRatio/float64(validCores))*100.0)
+	}
+
+	if load, ok := loadAvgFormatted(); ok {
+		return load
+	}
+	return "N/A"
+}
+
+func loadAvgFormatted() (string, bool) {
+	data, err := os.ReadFile("/proc/loadavg")
+	if err != nil {
+		return "", false
+	}
+	fields := strings.Fields(string(data))
+	if len(fields) < 3 {
+		return "", false
+	}
+	return fmt.Sprintf("%s, %s, %s", fields[0], fields[1], fields[2]), true
+}
+
+// PRoot containers melaporkan loadavg palsu 0.00 0.00 0.00 1/1 1.
+func isMockPRootLoad() bool {
+	data, err := os.ReadFile("/proc/loadavg")
+	if err != nil {
+		return false
+	}
+	fields := strings.Fields(string(data))
+	return len(fields) >= 5 && fields[0] == "0.00" && fields[1] == "0.00" &&
+		fields[2] == "0.00" && fields[3] == "1/1" && fields[4] == "1"
 }

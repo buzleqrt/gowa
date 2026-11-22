@@ -28,43 +28,18 @@ type generateResult struct {
 }
 
 func nodeBinary() string {
-	candidates := []string{
-		"node",
-		"/root/.nvm/versions/node/v26.13.0/bin/node",
-		"/usr/bin/node",
-		"/usr/local/bin/node",
-	}
-	for _, c := range candidates {
-		if c == "node" {
-			if p, err := exec.LookPath(c); err == nil {
-				return p
-			}
-			continue
-		}
-		if _, err := os.Stat(c); err == nil {
-			return c
-		}
+	if p, err := exec.LookPath("node"); err == nil {
+		return p
 	}
 	return "node"
 }
 
 func scriptPath() string {
-	candidates := []string{
-		"/root/Gowa/scripts/aimusic.js",
-		"scripts/aimusic.js",
+	wd, err := os.Getwd()
+	if err != nil {
+		return filepath.Join("scripts", "aimusic.js")
 	}
-	for _, c := range candidates {
-		if _, err := os.Stat(c); err == nil {
-			if filepath.IsAbs(c) {
-				return c
-			}
-			if wd, err := os.Getwd(); err == nil {
-				return filepath.Join(wd, c)
-			}
-			return c
-		}
-	}
-	return "/root/Gowa/scripts/aimusic.js"
+	return filepath.Join(wd, "scripts", "aimusic.js")
 }
 
 func Generate(ctx context.Context, desc string) (Song, error) {
@@ -73,8 +48,12 @@ func Generate(ctx context.Context, desc string) (Song, error) {
 		return Song{}, fmt.Errorf("deskripsi lagu kosong")
 	}
 
-	node := nodeBinary()
 	script := scriptPath()
+	if _, err := os.Stat(script); err != nil {
+		return Song{}, fmt.Errorf("skrip aimusic tidak ditemukan di %s", script)
+	}
+
+	node := nodeBinary()
 	cmd := exec.CommandContext(ctx, node, script, "create", "--desc", desc)
 	cmd.Dir = filepath.Dir(script)
 
@@ -87,7 +66,7 @@ func Generate(ctx context.Context, desc string) (Song, error) {
 		if msg == "" {
 			msg = strings.TrimSpace(stdout.String())
 		}
-		return Song{}, fmt.Errorf("gagal generate lagu: %v: %s", err, msg)
+		return Song{}, fmt.Errorf("%s", friendlyFailure(err, msg))
 	}
 
 	var res generateResult
@@ -95,12 +74,27 @@ func Generate(ctx context.Context, desc string) (Song, error) {
 		return Song{}, fmt.Errorf("gagal parse hasil: %v\n%s", err, stdout.String())
 	}
 	if res.Error != "" {
-		return Song{}, fmt.Errorf("%s: %s", res.Error, res.Msg)
+		return Song{}, fmt.Errorf("%s", friendlyFailure(nil, res.Error+": "+res.Msg))
 	}
 	if len(res.Songs) == 0 {
 		return Song{}, fmt.Errorf("tidak ada lagu yang dihasilkan: %s", stdout.String())
 	}
 	return res.Songs[0], nil
+}
+
+// friendlyFailure menerjemahkan kode error SonivaMusic yang sering muncul
+// menjadi kalimat yang bisa dimengerti pengguna perintah.
+func friendlyFailure(runErr error, raw string) string {
+	switch {
+	case strings.Contains(raw, "INSUFFICIENT_CREDITS"):
+		return "kredit akun SonivaMusic habis. Isi ulang kredit atau pakai akun lain, lalu coba lagi."
+	case strings.Contains(raw, "bind_required"):
+		return "sesi SonivaMusic perlu di-bind ulang. Hapus scripts/aimusic_session.json lalu coba lagi."
+	case runErr != nil:
+		return fmt.Sprintf("gagal generate lagu: %v: %s", runErr, raw)
+	default:
+		return raw
+	}
 }
 
 func Download(ctx context.Context, mediaURL string, maxBytes int64) ([]byte, error) {

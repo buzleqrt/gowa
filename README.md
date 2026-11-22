@@ -215,6 +215,12 @@ nohup ./gowa > gowa.log 2>&1 &
 
 Aplikasi membaca konfigurasi dari berkas `config.json`. Jika berkas belum tersedia, konfigurasi default akan dibuat secara otomatis saat pertama kali dijalankan.
 
+`config.json` tidak ikut di-commit karena berisi nomor owner dan `ig_sessionid`. Setelah kloning, salin contohnya lalu isi nilainya:
+
+```bash
+cp config.example.json config.json
+```
+
 Contoh `config.json`:
 
 ```json

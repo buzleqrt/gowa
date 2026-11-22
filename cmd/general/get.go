@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"mime"
+	"net"
 	"net/http"
 	"net/url"
 	"path"
@@ -56,12 +57,63 @@ func handleGet(ctx *command.Context) error {
 		))
 	}
 
+	resp, err := fetchGetResponse(targetURL)
+	if err != nil {
+		return ctx.Reply(err.Error())
+	}
+
+	if isTextContent(resp.mediaType, resp.body) {
+		return replyTextResponse(ctx, resp)
+	}
+	return replyMediaResponse(ctx, resp)
+}
+
+type getResponse struct {
+	status    int
+	mediaType string
+	fileName  string
+	body      []byte
+}
+
+// Tujuan ke alamat internal (loopback, private, link-local) ditolak supaya
+// .get tidak bisa dipakai memanggil layanan di dalam server bot.
+func guardTargetURL(targetURL string) error {
+	u, err := url.Parse(targetURL)
+	if err != nil {
+		return fmt.Errorf("❌ URL tidak valid: %v", err)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("❌ Hanya URL http/https yang didukung.")
+	}
+
+	ips, err := net.LookupIP(u.Hostname())
+	if err != nil {
+		return nil
+	}
+	for _, ip := range ips {
+		if isInternalIP(ip) {
+			return fmt.Errorf("❌ URL ke alamat internal tidak diizinkan.")
+		}
+	}
+	return nil
+}
+
+func isInternalIP(ip net.IP) bool {
+	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() ||
+		ip.IsLinkLocalMulticast() || ip.IsUnspecified() || ip.IsMulticast()
+}
+
+func fetchGetResponse(targetURL string) (*getResponse, error) {
+	if err := guardTargetURL(targetURL); err != nil {
+		return nil, err
+	}
+
 	reqCtx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, targetURL, nil)
 	if err != nil {
-		return ctx.Reply("❌ Gagal membuat permintaan HTTP: " + err.Error())
+		return nil, fmt.Errorf("❌ Gagal membuat permintaan HTTP: %v", err)
 	}
 
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
@@ -69,109 +121,106 @@ func handleGet(ctx *command.Context) error {
 
 	client := &http.Client{
 		Timeout: 90 * time.Second,
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return ctx.Reply("❌ Gagal menghubungi URL: " + err.Error())
-	}
-	defer resp.Body.Close()
-
-	limitR := io.LimitReader(resp.Body, maxDownloadSize+1)
-	bodyBytes, err := io.ReadAll(limitR)
-	if err != nil {
-		return ctx.Reply("❌ Gagal membaca respon dari server: " + err.Error())
-	}
-
-	if len(bodyBytes) > maxDownloadSize {
-		return ctx.Reply("❌ Ukuran data melebihi batas maksimum 50 MB.")
-	}
-
-	contentType := resp.Header.Get("Content-Type")
-	mediaType, _, _ := mime.ParseMediaType(contentType)
-	if mediaType == "" {
-		mediaType = http.DetectContentType(bodyBytes)
-	}
-
-	fileName := resolveFileName(targetURL, resp.Header.Get("Content-Disposition"), mediaType)
-	fileSizeFormatted := formatByteSize(int64(len(bodyBytes)))
-
-	if isTextContent(mediaType, bodyBytes) {
-		formattedText := string(bodyBytes)
-
-		if strings.Contains(mediaType, "json") || (len(bodyBytes) > 0 && (bodyBytes[0] == '{' || bodyBytes[0] == '[')) {
-			var prettyBuf bytes.Buffer
-			if err := json.Indent(&prettyBuf, bodyBytes, "", "  "); err == nil {
-				formattedText = prettyBuf.String()
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 10 {
+				return fmt.Errorf("terlalu banyak redirect")
 			}
-		}
+			return guardTargetURL(req.URL.String())
+		},
+	}
+	httpResp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("❌ Gagal menghubungi URL: %v", err)
+	}
+	defer httpResp.Body.Close()
 
-		if len(formattedText) <= 40000 {
-			msg := fmt.Sprintf(
-				"🌐 *HTTP GET Response*\n"+
-					"• *Status:* %d %s\n"+
-					"• *Type:* `%s`\n"+
-					"• *Size:* %s\n\n"+
-					"```\n%s\n```",
-				resp.StatusCode,
-				http.StatusText(resp.StatusCode),
-				mediaType,
-				fileSizeFormatted,
-				formattedText,
-			)
-			return ctx.Reply(msg)
-		}
+	body, err := io.ReadAll(io.LimitReader(httpResp.Body, maxDownloadSize+1))
+	if err != nil {
+		return nil, fmt.Errorf("❌ Gagal membaca respon dari server: %v", err)
+	}
+	if len(body) > maxDownloadSize {
+		return nil, fmt.Errorf("❌ Ukuran data melebihi batas maksimum 50 MB.")
+	}
 
-		docCaption := fmt.Sprintf(
-			"🌐 *HTTP GET Response (Dokumen)*\n"+
+	mediaType, _, _ := mime.ParseMediaType(httpResp.Header.Get("Content-Type"))
+	if mediaType == "" {
+		mediaType = http.DetectContentType(body)
+	}
+
+	return &getResponse{
+		status:    httpResp.StatusCode,
+		mediaType: mediaType,
+		fileName:  resolveFileName(targetURL, httpResp.Header.Get("Content-Disposition"), mediaType),
+		body:      body,
+	}, nil
+}
+
+func replyTextResponse(ctx *command.Context, resp *getResponse) error {
+	formattedText := string(resp.body)
+	fileSize := formatByteSize(int64(len(resp.body)))
+
+	if strings.Contains(resp.mediaType, "json") || (len(resp.body) > 0 && (resp.body[0] == '{' || resp.body[0] == '[')) {
+		var prettyBuf bytes.Buffer
+		if err := json.Indent(&prettyBuf, resp.body, "", "  "); err == nil {
+			formattedText = prettyBuf.String()
+		}
+	}
+
+	if len(formattedText) <= 40000 {
+		return ctx.Reply(fmt.Sprintf(
+			"🌐 *HTTP GET Response*\n"+
 				"• *Status:* %d %s\n"+
 				"• *Type:* `%s`\n"+
-				"• *Size:* %s\n"+
-				"_(Panjang teks: %d karakter, dikirim sebagai berkas)_",
-			resp.StatusCode,
-			http.StatusText(resp.StatusCode),
-			mediaType,
-			fileSizeFormatted,
-			len(formattedText),
-		)
-
-		textFileName := fileName
-		if !strings.HasSuffix(strings.ToLower(textFileName), ".txt") && !strings.HasSuffix(strings.ToLower(textFileName), ".json") {
-			if strings.Contains(mediaType, "json") {
-				textFileName += ".json"
-			} else {
-				textFileName += ".txt"
-			}
-		}
-
-		return ctx.ReplyDocument(bodyBytes, textFileName, mediaType, docCaption)
+				"• *Size:* %s\n\n"+
+				"```\n%s\n```",
+			resp.status, http.StatusText(resp.status), resp.mediaType, fileSize, formattedText,
+		))
 	}
 
+	docCaption := fmt.Sprintf(
+		"🌐 *HTTP GET Response (Dokumen)*\n"+
+			"• *Status:* %d %s\n"+
+			"• *Type:* `%s`\n"+
+			"• *Size:* %s\n"+
+			"_(Panjang teks: %d karakter, dikirim sebagai berkas)_",
+		resp.status, http.StatusText(resp.status), resp.mediaType, fileSize, len(formattedText),
+	)
+
+	textFileName := resp.fileName
+	if !strings.HasSuffix(strings.ToLower(textFileName), ".txt") && !strings.HasSuffix(strings.ToLower(textFileName), ".json") {
+		if strings.Contains(resp.mediaType, "json") {
+			textFileName += ".json"
+		} else {
+			textFileName += ".txt"
+		}
+	}
+
+	return ctx.ReplyDocument(resp.body, textFileName, resp.mediaType, docCaption)
+}
+
+func replyMediaResponse(ctx *command.Context, resp *getResponse) error {
 	caption := fmt.Sprintf(
 		"📦 *Fetched Media / File*\n"+
 			"• *File:* `%s`\n"+
 			"• *Status:* %d %s\n"+
 			"• *Type:* `%s`\n"+
 			"• *Size:* %s",
-		fileName,
-		resp.StatusCode,
-		http.StatusText(resp.StatusCode),
-		mediaType,
-		fileSizeFormatted,
+		resp.fileName, resp.status, http.StatusText(resp.status),
+		resp.mediaType, formatByteSize(int64(len(resp.body))),
 	)
 
 	switch {
-	case mediaType == "image/jpeg" || mediaType == "image/png" || mediaType == "image/webp":
-		return ctx.ReplyImage(bodyBytes, mediaType, caption)
+	case resp.mediaType == "image/jpeg" || resp.mediaType == "image/png" || resp.mediaType == "image/webp":
+		return ctx.ReplyImage(resp.body, resp.mediaType, caption)
 
-	case mediaType == "video/mp4" || strings.HasSuffix(strings.ToLower(fileName), ".mp4"):
-		return ctx.ReplyVideo(bodyBytes, "video/mp4", caption)
+	case resp.mediaType == "video/mp4" || strings.HasSuffix(strings.ToLower(resp.fileName), ".mp4"):
+		return ctx.ReplyVideo(resp.body, "video/mp4", caption)
 
-	case mediaType == "audio/mpeg" || mediaType == "audio/ogg" || mediaType == "audio/mp4":
-		return ctx.ReplyAudio(bodyBytes, mediaType, false)
+	case resp.mediaType == "audio/mpeg" || resp.mediaType == "audio/ogg" || resp.mediaType == "audio/mp4":
+		return ctx.ReplyAudio(resp.body, resp.mediaType, false)
 
 	default:
-		return ctx.ReplyDocument(bodyBytes, fileName, mediaType, caption)
+		return ctx.ReplyDocument(resp.body, resp.fileName, resp.mediaType, caption)
 	}
 }
 

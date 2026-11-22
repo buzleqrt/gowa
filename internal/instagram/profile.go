@@ -47,21 +47,21 @@ type LatestPost struct {
 
 // Profile berisi informasi publik sebuah akun Instagram.
 type Profile struct {
-	Source          string       `json:"source"`
-	ID              string       `json:"id"`
-	Username        string       `json:"username"`
-	FullName        string       `json:"full_name"`
-	Biography       string       `json:"biography"`
-	ProfilePicURL   string       `json:"profile_pic_url"`
-	IsPrivate       bool         `json:"is_private"`
-	IsVerified      bool         `json:"is_verified"`
-	IsMemorialized  bool         `json:"is_memorialized"`
-	FollowerCount   int64        `json:"follower_count"`
-	FollowingCount  int64        `json:"following_count"`
-	MediaCount      int64        `json:"media_count"`
-	Pronouns        []string     `json:"pronouns"`
-	BioLinks        []BioLink    `json:"bio_links"`
-	LatestPosts     []LatestPost `json:"latest_posts"`
+	Source         string       `json:"source"`
+	ID             string       `json:"id"`
+	Username       string       `json:"username"`
+	FullName       string       `json:"full_name"`
+	Biography      string       `json:"biography"`
+	ProfilePicURL  string       `json:"profile_pic_url"`
+	IsPrivate      bool         `json:"is_private"`
+	IsVerified     bool         `json:"is_verified"`
+	IsMemorialized bool         `json:"is_memorialized"`
+	FollowerCount  int64        `json:"follower_count"`
+	FollowingCount int64        `json:"following_count"`
+	MediaCount     int64        `json:"media_count"`
+	Pronouns       []string     `json:"pronouns"`
+	BioLinks       []BioLink    `json:"bio_links"`
+	LatestPosts    []LatestPost `json:"latest_posts"`
 
 	// Field lama (tetap diisi untuk kompatibilitas).
 	Avatar    string `json:"-"`
@@ -130,17 +130,17 @@ func FetchProfile(ctx context.Context, raw string) (*Profile, error) {
 	}
 
 	profile := &Profile{
-		Source:         "https://www.instagram.com/" + username + "/",
-		ID:             fmt.Sprintf("%.0f", float64(context.number("owner_id"))),
-		Username:       firstNonEmpty(context.string("username"), username),
-		FullName:       context.string("full_name"),
-		ProfilePicURL:  context.string("profile_pic_url"),
-		IsVerified:     context.boolean("verified") || context.boolean("is_verified"),
-		FollowerCount:  context.number("followers_count"),
-		MediaCount:     context.number("posts_count"),
-		Pronouns:       stringSlice(context["pronouns"]),
-		BioLinks:       []BioLink{},
-		LatestPosts:    []LatestPost{},
+		Source:        "https://www.instagram.com/" + username + "/",
+		ID:            fmt.Sprintf("%.0f", float64(context.number("owner_id"))),
+		Username:      firstNonEmpty(context.string("username"), username),
+		FullName:      context.string("full_name"),
+		ProfilePicURL: context.string("profile_pic_url"),
+		IsVerified:    context.boolean("verified") || context.boolean("is_verified"),
+		FollowerCount: context.number("followers_count"),
+		MediaCount:    context.number("posts_count"),
+		Pronouns:      stringSlice(context["pronouns"]),
+		BioLinks:      []BioLink{},
+		LatestPosts:   []LatestPost{},
 	}
 
 	// is_private kadang tersedia di level atas, kadang di owner graphql.

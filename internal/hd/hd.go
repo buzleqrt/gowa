@@ -125,10 +125,10 @@ func ihancerEnhance(ctx context.Context, data []byte, filename string) ([]byte, 
 	var buf bytes.Buffer
 	w := multipart.NewWriter(&buf)
 	fields := map[string]string{
-		"method":             "1",
-		"is_pro_version":     "false",
-		"is_enhancing_more":  "false",
-		"max_image_size":     "high",
+		"method":            "1",
+		"is_pro_version":    "false",
+		"is_enhancing_more": "false",
+		"max_image_size":    "high",
 	}
 	for k, v := range fields {
 		if err := w.WriteField(k, v); err != nil {
