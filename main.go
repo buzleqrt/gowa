@@ -7,6 +7,8 @@ import (
 
 	"gowa/internal/bot"
 	"gowa/internal/command"
+	"gowa/internal/instagram"
+	"gowa/internal/plugin"
 	"gowa/internal/storage"
 	"gowa/internal/util"
 
@@ -31,6 +33,10 @@ func main() {
 	if *prefixFlag != "" {
 		cfg.Prefix = *prefixFlag
 	}
+
+	instagram.SetSessionID(cfg.IGSessionID)
+
+	plugin.LoadDir(cfg.PluginDir)
 
 	fmt.Println()
 	fmt.Println("  \033[1;36m╭──────────────────────────────────────────────╮\033[0m")

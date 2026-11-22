@@ -1,11 +1,20 @@
 package general
 
 import (
+	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"gowa/internal/command"
+	"gowa/internal/storage"
+	"gowa/internal/thumb"
+
+	waProto "go.mau.fi/whatsmeow/proto/waE2E"
 )
+
+// menuURL adalah tautan yang ditampilkan pada preview kartu menu.
+const menuURL = "https://wa.me/6283175676190"
 
 func init() {
 	command.Register(&command.Command{
@@ -55,5 +64,53 @@ func handleMenu(ctx *command.Context) error {
 		}
 	}
 
-	return ctx.Reply(strings.TrimSpace(sb.String()))
+	text := strings.TrimSpace(sb.String())
+
+	if preview := buildMenuPreview(ctx, botTitle, text); preview != nil {
+		if err := ctx.SendMessage(preview); err == nil {
+			return nil
+		}
+	}
+
+	return ctx.Reply(text)
+}
+
+// buildMenuPreview menyusun menu sebagai pesan link-preview dengan thumbnail
+// random dari database, seperti sendThumbnail pada base zapo-js. Mengembalikan
+// nil bila tidak ada thumbnail tersimpan, supaya menu tetap terkirim sebagai
+// teks biasa.
+func buildMenuPreview(ctx *command.Context, botTitle, text string) *waProto.Message {
+	if ctx.Client == nil || ctx.Config == nil || strings.TrimSpace(ctx.Config.DBPath) == "" {
+		return nil
+	}
+
+	store, err := storage.OpenThumbStore(ctx.Config.DBPath)
+	if err != nil {
+		return nil
+	}
+
+	baseCtx := ctx.Ctx
+	if baseCtx == nil {
+		baseCtx = context.Background()
+	}
+	reqCtx, cancel := context.WithTimeout(baseCtx, 15*time.Second)
+	defer cancel()
+
+	meta, err := thumb.Resolve(reqCtx, ctx.Client, store, "random", thumb.KindThumbnail)
+	if err != nil {
+		return nil
+	}
+
+	favicon, err := thumb.Resolve(reqCtx, ctx.Client, store, "random", thumb.KindFavicon)
+	if err != nil {
+		favicon = nil
+	}
+
+	return thumb.BuildMessage(thumb.Preview{
+		URL:   menuURL,
+		Title: botTitle,
+		Body:  fmt.Sprintf("Daftar %d perintah dalam %d kategori", len(command.GetAll()), len(command.GetCategories())),
+		Text:  text,
+		Quote: ctx.QuotedContext(),
+	}, meta, favicon)
 }

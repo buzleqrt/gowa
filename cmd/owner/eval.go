@@ -62,7 +62,7 @@ func handleYaegiEval(ctx *command.Context) error {
 
 	code := stripCodeFence(ctx.RawArgs)
 	if code == "" {
-		return ctx.Reply("*Usage:* `eval <kode go>`\n\n_Variabel_ `ctx` _tersedia. Pakai_ `return <nilai>` _untuk menampilkan hasil._")
+		return ctx.Reply("*Usage:* `eval <kode go>` atau `!<kode go>`\n\n_Variabel_ `ctx` _tersedia. Pakai_ `return <nilai>` _untuk menampilkan hasil._")
 	}
 
 	ctx.Typing()
@@ -101,7 +101,38 @@ func handleYaegiEval(ctx *command.Context) error {
 	return ctx.Reply(formatEvalOutput(fmt.Sprintf("_%s_", elapsed), text))
 }
 
-func runYaegi(parent context.Context, botCtx *command.Context, code string, out io.Writer) (res interface{}, err error) {
+// runYaegi menjalankan snippet. Ekspresi sederhana tanpa "return" dan tanpa
+// pemanggilan fungsi (mis. "1+1") otomatis dibungkus jadi "return 1+1" supaya
+// nilainya tampil, dengan fallback ke bentuk asli bila gagal dikompilasi.
+func runYaegi(parent context.Context, botCtx *command.Context, code string, out io.Writer) (interface{}, error) {
+	if isSingleExpression(code) {
+		if res, err := runYaegiSource(parent, botCtx, "return "+strings.TrimSpace(code), out); err == nil {
+			return res, nil
+		}
+	}
+	return runYaegiSource(parent, botCtx, code, out)
+}
+
+func isSingleExpression(code string) bool {
+	s := strings.TrimSpace(code)
+	if s == "" || strings.ContainsAny(s, "\n;{}()") {
+		return false
+	}
+	if strings.Contains(s, "return") || strings.Contains(s, ":=") {
+		return false
+	}
+	if strings.Contains(strings.ReplaceAll(s, "==", ""), "=") {
+		return false
+	}
+	for _, kw := range []string{"func", "var", "const", "type", "if", "for", "switch", "select", "go", "defer", "range", "package", "import"} {
+		if s == kw || strings.HasPrefix(s, kw+" ") || strings.HasPrefix(s, kw+"(") {
+			return false
+		}
+	}
+	return true
+}
+
+func runYaegiSource(parent context.Context, botCtx *command.Context, code string, out io.Writer) (res interface{}, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic: %v", r)

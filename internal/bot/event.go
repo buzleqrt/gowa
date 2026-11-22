@@ -18,11 +18,11 @@ import (
 
 var botStartTime = time.Now()
 
-func EventHandler(client *whatsmeow.Client, cfg *storage.Config, pool *WorkerPool, sentCache *command.SentCache) func(any) {
+func EventHandler(client *whatsmeow.Client, cfg *storage.Config, pool *WorkerPool, sentCache *command.SentCache, msgStore *storage.MessageStore) func(any) {
 	return func(rawEvt any) {
 		switch evt := rawEvt.(type) {
 		case *events.Message:
-			handleIncomingMessage(evt, client, cfg, pool, sentCache)
+			handleIncomingMessage(evt, client, cfg, pool, sentCache, msgStore)
 
 		case *events.CallOffer:
 			handleCallOffer(evt, client)
@@ -84,6 +84,7 @@ func handleIncomingMessage(
 	cfg *storage.Config,
 	pool *WorkerPool,
 	sentCache *command.SentCache,
+	msgStore *storage.MessageStore,
 ) {
 	if evt.Message == nil || sentCache.Has(evt.Info.ID) {
 		return
@@ -93,6 +94,14 @@ func handleIncomingMessage(
 		msgAge := time.Since(evt.Info.Timestamp)
 		if msgAge > 2*time.Minute || evt.Info.Timestamp.Before(botStartTime.Add(-30*time.Second)) {
 			return
+		}
+	}
+
+	// Store pesan dipanggil sebelum filter reaksi/teks/perintah supaya semua
+	// pesan masuk (termasuk media tanpa caption) ikut tersimpan.
+	if msgStore != nil {
+		if err := saveMessage(msgStore, evt); err != nil {
+			util.Debug("Store", "Gagal menyimpan pesan %s: %v", evt.Info.ID, err)
 		}
 	}
 
@@ -121,6 +130,11 @@ func handleIncomingMessage(
 
 	cmd, found := command.Find(trigger)
 	if !found {
+		return
+	}
+
+	if command.IsLocked() && cmd.Cmd != "lock" {
+		util.Warn("Lock", "Perintah .%s dari %s diabaikan (bot terkunci)", trigger, senderNumber)
 		return
 	}
 
@@ -160,6 +174,86 @@ func handleIncomingMessage(
 	if !pool.Submit(cmd, cmdCtx, trigger) {
 		util.Warn("OVERLOAD", "Queue worker penuh, perintah %s dari %s diabaikan", trigger, senderNumber)
 	}
+}
+
+func saveMessage(store *storage.MessageStore, evt *events.Message) error {
+	msg := command.UnwrapMessage(evt.Message)
+	if msg == nil || msg.GetReactionMessage() != nil {
+		return nil
+	}
+
+	kind, text := describeMessage(msg)
+
+	sender := evt.Info.Sender.String()
+	senderPN := ""
+	if evt.Info.SenderAlt.Server == types.DefaultUserServer {
+		senderPN = evt.Info.SenderAlt.String()
+	} else if evt.Info.Sender.Server == types.DefaultUserServer {
+		senderPN = sender
+	}
+
+	ts := evt.Info.Timestamp
+	if ts.IsZero() {
+		ts = time.Now()
+	}
+
+	raw, err := proto.Marshal(evt.Message)
+	if err != nil {
+		return err
+	}
+
+	record := &storage.Message{
+		Chat:      evt.Info.Chat.String(),
+		StanzaID:  string(evt.Info.ID),
+		Sender:    sender,
+		SenderPN:  senderPN,
+		PushName:  evt.Info.PushName,
+		IsGroup:   evt.Info.IsGroup,
+		FromMe:    evt.Info.IsFromMe,
+		Timestamp: ts.UnixMilli(),
+		Type:      kind,
+		Text:      text,
+		Raw:       raw,
+	}
+	return store.Save(record)
+}
+
+// describeMessage menentukan jenis pesan dan teks/caption yang bisa dipakai
+// untuk pencarian maupun tampilan .getmsg.
+func describeMessage(msg *waProto.Message) (kind, text string) {
+	switch {
+	case msg.GetConversation() != "":
+		return "text", msg.GetConversation()
+	case msg.GetExtendedTextMessage() != nil:
+		return "text", msg.GetExtendedTextMessage().GetText()
+	case msg.GetImageMessage() != nil:
+		return "image", msg.GetImageMessage().GetCaption()
+	case msg.GetVideoMessage() != nil:
+		return "video", msg.GetVideoMessage().GetCaption()
+	case msg.GetAudioMessage() != nil:
+		return "audio", ""
+	case msg.GetDocumentMessage() != nil:
+		return "document", msg.GetDocumentMessage().GetCaption()
+	case msg.GetStickerMessage() != nil:
+		return "sticker", ""
+	case msg.GetLocationMessage() != nil, msg.GetLiveLocationMessage() != nil:
+		return "location", ""
+	case msg.GetContactMessage() != nil, msg.GetContactsArrayMessage() != nil:
+		return "contact", ""
+	case msg.GetPollCreationMessage() != nil, msg.GetPollCreationMessageV2() != nil, msg.GetPollCreationMessageV3() != nil:
+		return "poll", ""
+	case msg.GetPollUpdateMessage() != nil:
+		return "poll_vote", ""
+	case msg.GetProtocolMessage() != nil,
+		msg.GetDeviceSentMessage() != nil,
+		msg.GetBotInvokeMessage() != nil,
+		msg.GetSenderKeyDistributionMessage() != nil,
+		msg.GetFastRatchetKeySenderKeyDistributionMessage() != nil,
+		msg.GetMessageHistoryNotice() != nil,
+		msg.GetMessageHistoryBundle() != nil:
+		return "system", ""
+	}
+	return "other", ""
 }
 
 func extractMessageText(msg *waProto.Message) string {
@@ -273,6 +367,13 @@ func parseCommandInput(rawText, prefix string, isOwner bool) (trigger string, ar
 
 	if hasPrefix {
 		return potentialTrigger, parts[1:], strings.TrimSpace(cleanText[len(parts[0]):]), false, true
+	}
+
+	// "!" adalah pintasan eval: "!1+1" atau "! 1+1" langsung mengeksekusi
+	// kode Go tanpa menulis kata "eval".
+	if isOwner && strings.HasPrefix(trimmed, "!") {
+		code := strings.TrimSpace(trimmed[1:])
+		return "eval", strings.Fields(code), code, true, true
 	}
 
 	if isOwner {

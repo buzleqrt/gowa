@@ -41,6 +41,32 @@ func Register(cmd *Command) {
 	}
 }
 
+// Unregister menghapus perintah beserta seluruh alias-nya dari registry.
+func Unregister(name string) (*Command, bool) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	cmd, ok := commands[strings.ToLower(strings.TrimSpace(name))]
+	if !ok {
+		return nil, false
+	}
+
+	for i, c := range allCommands {
+		if c == cmd {
+			allCommands = append(allCommands[:i], allCommands[i+1:]...)
+			break
+		}
+	}
+
+	for key, c := range commands {
+		if c == cmd {
+			delete(commands, key)
+		}
+	}
+
+	return cmd, true
+}
+
 func Find(name string) (*Command, bool) {
 	mu.RLock()
 	defer mu.RUnlock()

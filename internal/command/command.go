@@ -20,6 +20,7 @@ type Command struct {
 	Categ   string
 	Desc    string
 	Alias   []string
+	Source  string // path absolut berkas plugin asal, kosong untuk perintah bawaan
 	Execute func(ctx *Context) error
 }
 
@@ -57,21 +58,31 @@ func (c *Context) sendInternal(target types.JID, msg *waProto.Message) error {
 	return err
 }
 
-func (c *Context) Reply(text string) error {
+// QuotedContext membangun ContextInfo yang mengutip pesan pemicu perintah.
+func (c *Context) QuotedContext() *waProto.ContextInfo {
 	var participant *string
 	if c.IsGroup {
 		p := c.Event.Info.Sender.ToNonAD().String()
 		participant = proto.String(p)
 	}
 
+	return &waProto.ContextInfo{
+		StanzaID:      proto.String(c.Event.Info.ID),
+		Participant:   participant,
+		QuotedMessage: c.Event.Message,
+	}
+}
+
+// SendMessage mengirim pesan proto apa adanya ke chat asal perintah.
+func (c *Context) SendMessage(msg *waProto.Message) error {
+	return c.sendInternal(c.Chat, msg)
+}
+
+func (c *Context) Reply(text string) error {
 	msg := &waProto.Message{
 		ExtendedTextMessage: &waProto.ExtendedTextMessage{
-			Text: proto.String(text),
-			ContextInfo: &waProto.ContextInfo{
-				StanzaID:      proto.String(c.Event.Info.ID),
-				Participant:   participant,
-				QuotedMessage: c.Event.Message,
-			},
+			Text:        proto.String(text),
+			ContextInfo: c.QuotedContext(),
 		},
 	}
 

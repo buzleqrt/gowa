@@ -19,3 +19,12 @@ data/
 .DS_Store
 .idea/
 .vscode/
+
+# Node dependencies
+scripts/node_modules/
+node_modules/
+
+# Session / credential files
+scripts/aimusic_session.json
+scripts/scripts/dola_sessions/
+*.session.json

@@ -113,7 +113,12 @@ func (c *Context) GetContextInfo() *waProto.ContextInfo {
 	if c.Event == nil || c.Event.Message == nil {
 		return nil
 	}
-	msg := UnwrapMessage(c.Event.Message)
+	return ContextInfoOf(UnwrapMessage(c.Event.Message))
+}
+
+// ContextInfoOf mengambil ContextInfo (quote, mention, forwarding) dari isi
+// pesan yang sudah di-unwrap.
+func ContextInfoOf(msg *waProto.Message) *waProto.ContextInfo {
 	if msg == nil {
 		return nil
 	}
@@ -144,6 +149,7 @@ func (c *Context) GetQuotedMessage() *waProto.Message {
 }
 
 func (c *Context) SendImage(data []byte, mimeType, caption string) error {
+	data, mimeType = normalizeImage(data, mimeType)
 	if mimeType == "" {
 		mimeType = "image/jpeg"
 	}
@@ -177,6 +183,7 @@ func (c *Context) SendImage(data []byte, mimeType, caption string) error {
 }
 
 func (c *Context) ReplyImage(data []byte, mimeType, caption string, mentions ...string) error {
+	data, mimeType = normalizeImage(data, mimeType)
 	if mimeType == "" {
 		mimeType = "image/jpeg"
 	}
@@ -226,6 +233,16 @@ func (c *Context) ReplyImage(data []byte, mimeType, caption string, mentions ...
 }
 
 func (c *Context) SendAudio(data []byte, mimeType string, isPtt bool) error {
+	return c.sendAudio(data, mimeType, isPtt, 0)
+}
+
+// SendVoiceNote mengirim voice note (PTT) lengkap dengan durasi yang
+// ditampilkan di chat.
+func (c *Context) SendVoiceNote(data []byte, mimeType string, seconds uint32) error {
+	return c.sendAudio(data, mimeType, true, seconds)
+}
+
+func (c *Context) sendAudio(data []byte, mimeType string, isPtt bool, seconds uint32) error {
 	if mimeType == "" {
 		mimeType = "audio/ogg; codecs=opus"
 	}
@@ -242,20 +259,21 @@ func (c *Context) SendAudio(data []byte, mimeType string, isPtt bool) error {
 		return fmt.Errorf("upload audio gagal: %w", err)
 	}
 
-	msg := &waProto.Message{
-		AudioMessage: &waProto.AudioMessage{
-			Mimetype:      proto.String(mimeType),
-			PTT:           proto.Bool(isPtt),
-			URL:           &resp.URL,
-			DirectPath:    &resp.DirectPath,
-			MediaKey:      resp.MediaKey,
-			FileEncSHA256: resp.FileEncSHA256,
-			FileSHA256:    resp.FileSHA256,
-			FileLength:    &resp.FileLength,
-		},
+	audio := &waProto.AudioMessage{
+		Mimetype:      proto.String(mimeType),
+		PTT:           proto.Bool(isPtt),
+		URL:           &resp.URL,
+		DirectPath:    &resp.DirectPath,
+		MediaKey:      resp.MediaKey,
+		FileEncSHA256: resp.FileEncSHA256,
+		FileSHA256:    resp.FileSHA256,
+		FileLength:    &resp.FileLength,
+	}
+	if isPtt && seconds > 0 {
+		audio.Seconds = proto.Uint32(seconds)
 	}
 
-	return c.sendInternal(c.Chat, msg)
+	return c.sendInternal(c.Chat, &waProto.Message{AudioMessage: audio})
 }
 
 func (c *Context) ReplyAudio(data []byte, mimeType string, isPtt bool) error {

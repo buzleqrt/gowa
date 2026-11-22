@@ -57,7 +57,13 @@ func New(cfg *storage.Config) (*Bot, error) {
 	pool := NewWorkerPool(128)
 	sentCache := command.NewSentCache()
 
-	client.AddEventHandler(EventHandler(client, cfg, pool, sentCache))
+	msgStore, err := storage.OpenMessageStore(cfg.DBPath)
+	if err != nil {
+		_ = container.Close()
+		return nil, fmt.Errorf("inisialisasi store pesan gagal: %w", err)
+	}
+
+	client.AddEventHandler(EventHandler(client, cfg, pool, sentCache, msgStore))
 
 	return &Bot{
 		Config:    cfg,

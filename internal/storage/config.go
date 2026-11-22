@@ -18,7 +18,11 @@ type Config struct {
 	OwnerNumbers   []string `json:"owner_numbers"`
 	IgnoreOffline  bool     `json:"ignore_offline"`
 	DeleteReaction string   `json:"delete_reaction"`
-	FilePath       string   `json:"-"`
+	PluginDir      string   `json:"plugin_dir"`
+	// IGSessionID adalah nilai cookie sessionid akun Instagram yang dipakai
+	// perintah pencarian (.igsearch). Kosong berarti pencarian dimatikan.
+	IGSessionID string `json:"ig_sessionid"`
+	FilePath    string `json:"-"`
 }
 
 var DefaultConfig = Config{
@@ -31,6 +35,7 @@ var DefaultConfig = Config{
 	OwnerNumbers:   []string{},
 	IgnoreOffline:  true,
 	DeleteReaction: "❌",
+	PluginDir:      "plugins",
 	FilePath:       "config.json",
 }
 
@@ -52,6 +57,9 @@ func (c *Config) Validate() {
 	}
 	if strings.TrimSpace(c.DeleteReaction) == "" {
 		c.DeleteReaction = "❌"
+	}
+	if strings.TrimSpace(c.PluginDir) == "" {
+		c.PluginDir = "plugins"
 	}
 }
 
