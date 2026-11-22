@@ -253,7 +253,6 @@ func (d tikwmDetail) toMetadata() *Metadata {
 	if audioURL != "" {
 		md.Music = &Music{Title: d.MusicInfo.Title, Author: d.MusicInfo.Author, URL: audioURL}
 	}
-
 	if len(photos) > 0 {
 		md.VideoURL = ""
 	}
